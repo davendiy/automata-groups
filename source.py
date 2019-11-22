@@ -10,6 +10,9 @@
 
 from sympy.combinatorics import Permutation
 from numpy import lcm
+from multiprocessing import RLock
+
+LOCK = RLock()
 
 CHUNK = 400
 
@@ -24,28 +27,29 @@ class BadExpressionError(Exception):
     pass
 
 
-class NewGroupElement:
+class AutomataGroupElement:
     DEFINED_ELEMENTS = {"e": ...}
 
     @staticmethod
     def from_cache(name):
-        if name in NewGroupElement.DEFINED_ELEMENTS:
-            return NewGroupElement.DEFINED_ELEMENTS[name]
+        if name in AutomataGroupElement.DEFINED_ELEMENTS:
+            return AutomataGroupElement.DEFINED_ELEMENTS[name]
         else:
             raise NotCalculatedError()
 
     def __init__(self, name="e", perm="", el_list=("e", "e", "e"), primitive=True):
-        self.prim = primitive
+        self.triv = primitive
 
-        if self.prim:
+        if self.triv:
             self.name = "e"
             self.perm = Permutation([0, 1, 2])
             self.el_list = ("e", "e", "e")
-            NewGroupElement.DEFINED_ELEMENTS['e'] = self
+            with LOCK:
+                AutomataGroupElement.DEFINED_ELEMENTS['e'] = self
 
         else:
-            if name in NewGroupElement.DEFINED_ELEMENTS:
-                tmp = NewGroupElement.DEFINED_ELEMENTS[name]
+            if name in AutomataGroupElement.DEFINED_ELEMENTS:
+                tmp = AutomataGroupElement.DEFINED_ELEMENTS[name]
                 self.name = tmp.name
                 self.perm = tmp.perm
                 self.el_list = tmp.el_list
@@ -55,20 +59,22 @@ class NewGroupElement:
                 assert len(el_list) == 3, "bad lenght of el_list"
                 assert isinstance(name, str), "bad name"
                 for el in el_list:
-                    if el not in NewGroupElement.DEFINED_ELEMENTS and el != name:
-                        NewGroupElement.parse_str(el)
+                    if el not in AutomataGroupElement.DEFINED_ELEMENTS and el != name:
+                        GroupElement(el)
 
                 self.name = name
                 self.perm = perm
                 self.el_list = el_list
+                
+                with LOCK:
+                    AutomataGroupElement.DEFINED_ELEMENTS[self.name] = self
 
-                NewGroupElement.DEFINED_ELEMENTS[self.name] = self
-
-                if self.is_primitive():
-                    self.perm = Permutation([0, 1, 2])
-                    self.el_list = ("e", "e", "e")
-                    self.prim = True
-                    NewGroupElement.DEFINED_ELEMENTS[self.name] = self
+                # if self.is_primitive():
+                #     self.perm = Permutation([0, 1, 2])
+                #     self.el_list = ("e", "e", "e")
+                #     self.prim = True
+                #     with LOCK:
+                #         AutomataGroupElement.DEFINED_ELEMENTS[self.name] = self
 
     def __str__(self):
         return self.name + " = " + str(self.perm) + " (" + ', '.join(self.el_list) + ")"
@@ -77,7 +83,7 @@ class NewGroupElement:
         return self.name
 
     def __call__(self, word):
-        if self.prim:
+        if self.triv:
             return word
 
         elif not word:
@@ -86,10 +92,10 @@ class NewGroupElement:
             return [word[0] ^ self.perm]
         else:
             el = self.el_list[int(word[0]) - 1]
-            return [word[0] ^ self.perm] + NewGroupElement.DEFINED_ELEMENTS[el](word[1:])
+            return [word[0] ^ self.perm] + AutomataGroupElement.DEFINED_ELEMENTS[el](word[1:])
 
     def __mul__(self, other):
-        if self.prim:
+        if self.triv:
             return other
 
         if other.prim:
@@ -108,23 +114,23 @@ class NewGroupElement:
             res_els.append(tmp_res)
 
         for el in res_els:
-            NewGroupElement.parse_str(el)
-        res = NewGroupElement(res_name, res_perm, res_els, primitive=False)
+            GroupElement(el)
+        res = AutomataGroupElement(res_name, res_perm, res_els, primitive=False)
         return res
 
     def __pow__(self, power):
-        res = NewGroupElement()
+        res = AutomataGroupElement()
         for i in range(power):
             res *= self
         return res
 
-    def is_primitive(self, checked=()):
+    def is_trivial(self, checked=()):
         if not checked:
             checked = set()
         if self.name in checked:
             return True
-        if self.prim:
-            return self.prim
+        if self.triv:
+            return self.triv
 
         if self.perm != Permutation([0, 1, 2]):
             return False
@@ -132,14 +138,14 @@ class NewGroupElement:
         succ = True
         checked.add(self.name)
         for el in self.el_list:
-            tmp = NewGroupElement.DEFINED_ELEMENTS[el]
-            succ = succ and tmp.is_primitive(checked)
+            tmp = AutomataGroupElement.DEFINED_ELEMENTS[el]
+            succ = succ and tmp.is_trivial(checked)
             if not succ:
                 break
         return succ
 
     def order(self):
-        if self.prim:
+        if self.triv:
             return 1
 
         perm_order = self.perm.order()
@@ -147,7 +153,7 @@ class NewGroupElement:
         if (tmp.el_list[0] == tmp.el_list[0][::-1]
                 and tmp.el_list[1] == tmp.el_list[1][::-1]
                 and tmp.el_list[2] == tmp.el_list[2][::-1]):
-            return perm_order * 2 if not tmp.prim else perm_order
+            return perm_order * 2 if not tmp.triv else perm_order
         else:
             return float('inf')
 
@@ -157,9 +163,9 @@ class NewGroupElement:
         return tmp_res if tmp_res else float('inf')
 
     def _order2_helper(self, checked, deep):
-        if self.name in checked and not self.prim:
+        if self.name in checked and not self.triv:
             return 0
-        elif self.prim:
+        elif self.triv:
             return 1
         elif deep > RECURSION_MAX_DEEP:
             return 0
@@ -171,7 +177,7 @@ class NewGroupElement:
 
         lcm_ord = 1
         for el in tmp.el_list:
-            tmp = NewGroupElement.parse_str(el)
+            tmp = GroupElement(el)
             tmp_ord = tmp._order2_helper(checked, deep + 1)
             lcm_ord = lcm(lcm_ord, tmp_ord)
             if not lcm_ord:
@@ -179,28 +185,28 @@ class NewGroupElement:
         return res * lcm_ord
 
     def order_brute(self):
-        tmp = NewGroupElement()
+        tmp = AutomataGroupElement()
         res = float('inf')
         for i in range(CHUNK):
             tmp *= self
-            if tmp.prim:
+            if tmp.triv:
                 res = i
                 break
         return res
 
-    @staticmethod
-    def parse_str(expression):
-        if expression in NewGroupElement.DEFINED_ELEMENTS:
-            return NewGroupElement.DEFINED_ELEMENTS[expression]
 
-        for el in set(expression):
-            if el not in NewGroupElement.DEFINED_ELEMENTS:
-                raise BadExpressionError()
+def GroupElement(expression):
+    if expression in AutomataGroupElement.DEFINED_ELEMENTS:
+        return AutomataGroupElement.DEFINED_ELEMENTS[expression]
 
-        res = NewGroupElement()
-        for el in expression:
-            res = res * NewGroupElement.from_cache(el)
-        return res
+    for el in set(expression):
+        if el not in AutomataGroupElement.DEFINED_ELEMENTS:
+            raise BadExpressionError()
+
+    res = AutomataGroupElement()
+    for el in expression:
+        res = res * AutomataGroupElement.from_cache(el)
+    return res
 
 
 def mul(tmp1, tmp2):
@@ -209,14 +215,14 @@ def mul(tmp1, tmp2):
     return res
 
 
-e = NewGroupElement()
-a = NewGroupElement(name='a', perm=Permutation([1, 0, 2]), el_list=['e', 'e', 'a'], primitive=False)
-b = NewGroupElement(name='b', perm=Permutation([2, 1, 0]), el_list=['e', 'b', 'e'], primitive=False)
-c = NewGroupElement(name='c', perm=Permutation([0, 2, 1]), el_list=['c', 'e', 'e'], primitive=False)
+e = AutomataGroupElement()
+a = AutomataGroupElement(name='a', perm=Permutation([1, 0, 2]), el_list=['e', 'e', 'a'], primitive=False)
+b = AutomataGroupElement(name='b', perm=Permutation([2, 1, 0]), el_list=['e', 'b', 'e'], primitive=False)
+c = AutomataGroupElement(name='c', perm=Permutation([0, 2, 1]), el_list=['c', 'e', 'e'], primitive=False)
 
 
 if __name__ == '__main__':
 
     print(a, b, c, sep='\n')
-    test = NewGroupElement.parse_str("abcbabcbacba")
+    test = GroupElement("abcbabcbacba")
     print(test, test.order())
