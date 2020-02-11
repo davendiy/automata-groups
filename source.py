@@ -98,7 +98,7 @@ class AutomataGroupElement:
         if self.triv:
             return other
 
-        if other.prim:
+        if other.triv:
             return self
 
         res_name = self.name + other.name
