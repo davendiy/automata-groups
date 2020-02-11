@@ -191,4 +191,4 @@ if __name__ == '__main__':
 
     test_tree.add_child(test_tree)
     test_tree.add_child(test_tree, position=0)
-    test_tree.draw(save_filename='test.png')
+    test_tree.draw(save_filename='graphs/test.png')
