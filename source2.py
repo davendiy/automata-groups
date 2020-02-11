@@ -9,7 +9,7 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
-from trees3 import *
+from trees import *
 from sympy.combinatorics import Permutation
 from collections import deque
 import numpy as np
@@ -18,18 +18,21 @@ import numpy as np
 TRIVIAL_PERM = Permutation([0, 1, 2])
 
 
+# TODO: YOU MUST ADD COMMENTS
+
+
 class AutomataTreeNode(Tree):
 
-    _colors = {
-        '(2)': 'y',
-        '(0 1 2)': 'r',
+    _colors = {        # color of the vertex depends on its permutation
+        '(2)': 'y',    # could be changed into 'unique color for each permutation'
+        '(0 1 2)': 'r',  # now color is unique for each possible order of permutation
         '(0 2 1)': 'r',
         '(2)(0 1)': 'b',
         '(0 2)': 'b',
         '(1 2)': 'b'
     }
 
-    _labels = {
+    _labels = {           # corresponding labels for colors
         'r': 'permutation of order 3',
         'b': 'permutation of order 2',
         'y': 'trivial permutation',
@@ -66,7 +69,7 @@ class AutomataTreeNode(Tree):
                 yield x_coord, y_coord
 
     def draw(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
-             save_filename='', show_full=False, y_scale_mul=3):
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False):
         fig, ax = plt.subplots(figsize=(20, 20))
         # ax = fig.add_subplot(111)
 
@@ -80,20 +83,22 @@ class AutomataTreeNode(Tree):
             x_coords.append(x)
             y_coords.append(y)
 
-        for color, label in self._labels.items():
-            circle = plt.Circle((x_coords[0], y_coords[0]), radius=radius, color=color, label=label)
-            ax.add_patch(circle)
-        circle = plt.Circle((x_coords[0], y_coords[0]), radius=radius, color='w')
-        ax.add_patch(circle)
-
-        fontsize = fontsize / np.log(self.vert_amount())
+        fontsize = fontsize / (np.log(self.vert_amount()))
 
         # draw edges
         ax.plot(x_coords, y_coords, linewidth=0.5)
 
+        used_colors = set()
         # draw vertices
         self._draw(ax, start_x, start_y, scale, radius, fontsize, show_full=show_full,
-                   y_scale_mul=y_scale_mul)
+                   y_scale_mul=y_scale_mul, used_colors=used_colors, lbn=lbn)
+
+        for color in used_colors:
+            circle = plt.Circle((0, 0), radius=radius/10,
+                                color=color, label=self._labels[color])
+            ax.add_patch(circle)
+        circle = plt.Circle((0, 0), radius=radius/10, color='w')
+        ax.add_patch(circle)
 
         ax.axis('off')
         ax.set_aspect('equal')
@@ -105,7 +110,11 @@ class AutomataTreeNode(Tree):
             fig.savefig(save_filename)
 
     def _draw(self, ax, start_x, start_y, scale, radius,
-              fontsize, deep=0, show_full=False, y_scale_mul=3):
+              fontsize, deep=0, show_full=False, y_scale_mul=3, used_colors=None,
+              lbn=False):
+
+        if used_colors is None:
+            used_colors = set()
 
         x_coord = self._offset * scale + start_x
         y_coord = start_y - deep * scale * y_scale_mul
@@ -113,16 +122,25 @@ class AutomataTreeNode(Tree):
         if not self.reverse:
             color = AutomataTreeNode._colors[str(self.permutation)]
             circle = plt.Circle((x_coord, y_coord), radius=radius, color=color)
+            used_colors.add(color)
         else:
             circle = plt.Circle((x_coord, y_coord), radius=radius, color='k')
+            used_colors.add('k')
         ax.add_patch(circle)
-        ax.annotate(str(self.value), xy=(x_coord, y_coord),
+
+        if (not self.children or (self.simplify and not show_full)) and lbn:
+            bias = -2
+        else:
+            bias = 1
+        ax.annotate(str(self.value), xy=(x_coord, y_coord + radius * bias),
+                    xytext=(-fontsize * (len(str(self.value))//3), 2 * bias),
+                    textcoords='offset pixels',
                     fontsize=fontsize)
 
         if not self.simplify or show_full:
             for child in self.children:       # type: AutomataTreeNode
                 child._draw(ax, start_x, start_y, scale, radius, fontsize,
-                            deep + 1, show_full, y_scale_mul)
+                            deep + 1, show_full, y_scale_mul, used_colors, lbn)
 
     def add_child(self, child, position=None):
         if isinstance(child, AutomataTreeNode):
@@ -265,8 +283,12 @@ class AutomataGroupElement:
                 res_children.append(self_child * other_child)
         return AutomataGroupElement(res_name, res_permutation, res_children)
 
-    def show(self, save_filename='', show_full=False):
-        self.tree.draw(save_filename=save_filename, show_full=show_full)
+    def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False):
+        self.tree.draw(start_x=start_x, start_y=start_y,
+                       scale=scale, radius=radius,
+                       fontsize=fontsize, y_scale_mul=y_scale_mul,
+                       save_filename=save_filename, show_full=show_full, lbn=lbn)
 
 
 def from_string(string) -> AutomataGroupElement:
@@ -290,22 +312,19 @@ c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
 
 
 if __name__ == '__main__':
+    e.show(show_full=True)
+    a.show(show_full=True)
+    b.show(show_full=True)
+    c.show(show_full=True)
 
+    ab = a * b
+    abc = ab * c
+    abc.show(show_full=True)
+    abc.show()
+    abc.show(show_full=True)
 
-    #
-    # e.show(show_full=True)
-    # a.show(show_full=True)
-    # b.show(show_full=True)
-    # c.show(show_full=True)
-    #
-    # ab = a * b
-    # abc = ab * c
-    # abc.show(show_full=True)
-    # abc.show()
-    # abc.show(show_full=True)
-    #
-    # abcc = abc * c
-    # abcc.show()
+    abcc = abc * c
+    abcc.show()
 
     test = from_string('cbcbacabacacbcabacabac')
-    test.show('test.png', show_full=True)
+    test.show(save_filename='graphs/test.png', show_full=True)

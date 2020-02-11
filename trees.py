@@ -20,27 +20,36 @@ class Tree:
         self.children = deque()      # list of children
         self.parent = None
 
-        self._offset = 0  # vertex offset relative to zero (zero should be root)
-        self._max_right = None  # offset of the most right descendant (not child)
-        self._min_left = None   # offset of the most left descendant (not child)
+        # vertex horizontal offset relative to zero (the most left point)
+        # it's just for plotting
+        self._offset = 0
 
         for child in children:
             self.add_child(child)
 
     def copy(self):
-        return self.__copy__()
-
-    def __copy__(self):
+        """ Create copy of the entire tree recursively.
+        """
         res = Tree(self.value)
-        for child in self.children:   # type: Tree
+        for child in self.children:  # type: Tree
             res.add_child(child)
         return res
 
     def add_child(self, child, position=None):
+        """ Add copy of the child to the tree.
+
+        :param child: Tree or any another type
+                      If one has type of Tree, it will be copied and
+                      added (inserted) to the deque of children
+                      Else new Tree with the given value will be created
+        :param position: index where we must insert the given child
+                         (default None means append to the end)
+        :return: Created or copied subtree
+        """
         if isinstance(child, Tree):
             _child = child.copy()       # add only copies of the given trees
         else:                           # in order to avoid cycles
-            _child = Tree(child)
+            _child = Tree(child)  # if the type is different - create new Tree
         if position is None:
             self.children.append(_child)
         else:
@@ -48,22 +57,34 @@ class Tree:
         _child.parent = self
         return _child
 
-    def height(self, start=0):
+    def height(self, start=0) -> int:
+        """ Finds the height (deep) of the tree recursively.
+        Height means length of the biggest way from root to any of vertex.
+
+        :param start: auxiliary parameter for recursion
+        :return: integer number
+        """
         res = start
         for el in self.children:    # type: Tree
             res = max(res, el.height(start=start+1))
         return res
 
-    def vert_amount(self):
+    def vert_amount(self) -> int:
+        """ Calculates the amount of all the vertices recursively.
+        """
         res = 1
         for el in self.children:    # type: Tree
             res += el.vert_amount()
         return res
 
     def remove(self, child):
+        """ Removes child from tree.
+
+        :param child: Tree or value of tree
+        """
         if isinstance(child, Tree):
-            child.parent = None
-            self.children.remove(child)
+            child.parent = None           # FIXME here might be problems
+            self.children.remove(child)   #  Tree should have method __eq__
         else:
             for i, el in enumerate(self.children):
                 if el.value == child:
@@ -73,11 +94,23 @@ class Tree:
 
     def draw(self, start_x=0, start_y=0, scale=10, radius=2, fontsize=10,
              save_filename=''):
+        """ Draws the tree in matplotlib.
+
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param radius: radius of vertices
+        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
+        :param save_filename: name of file, where it should be save.
+                              Default == '', means that the picture won't be saved
+        """
         fig, ax = plt.subplots()
-        ax = fig.add_subplot(111)
+        # ax = fig.add_subplot(111)
 
-        self.make_offsets()
-
+        self.make_offsets()       # pre-calculate the offsets
         x_coords = []
         y_coords = []
         for x, y in self.get_coords(start_x, start_y, scale):
@@ -96,11 +129,23 @@ class Tree:
 
         fig.show()
         if save_filename:
-            fig.savefig('test.png')
+            fig.savefig(save_filename)
 
     def _draw(self, ax, start_x, start_y, scale, radius,
               fontsize, deep=0):
+        """ Auxiliary recursive (DFS) function for drawing the vertices of tree.
 
+        :param ax: matplotlib object for plotting
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param radius: radius of vertices
+        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
+        :param deep: auxiliary parameter - number of self's generation
+        """
         x_coord = self._offset * scale + start_x
         y_coord = start_y - deep * scale
 
@@ -113,6 +158,18 @@ class Tree:
             child._draw(ax, start_x, start_y, scale, radius, fontsize, deep + 1)
 
     def get_coords(self, start_x, start_y, scale, deep=0):
+        """ Recursively (DFS) generates sequence of coordinates of vertices for
+        drawing the edges.
+
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param deep: auxiliary parameter - number of self's generation
+        :yield: (x, y) - coordinates on the plane
+        """
         x_coord = start_x + self._offset * scale
         y_coord = start_y - deep * scale
         yield x_coord, y_coord
@@ -122,6 +179,9 @@ class Tree:
             yield x_coord, y_coord
 
     def make_offsets(self):
+        """ Calculate offsets of all the vertices relative to zero point -
+        the left bound. Uses for drawing without overlaps.
+        """
         pre_shifted = 0
         pre_right_bound = 0
         for child in self.children:  # type: Tree
