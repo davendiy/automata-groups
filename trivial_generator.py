@@ -7,9 +7,9 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
-from source import GroupElement, AutomataGroupElement
+from src.source import GroupElement, AutomataGroupElement
 from multiprocessing import Value, Queue, Process
-from logger import logger
+from src.logger import logger
 import time
 
 

@@ -57,17 +57,11 @@ class Tree:
         _child.parent = self
         return _child
 
-    def height(self, start=0) -> int:
-        """ Finds the height (deep) of the tree recursively.
-        Height means length of the biggest way from root to any of vertex.
-
-        :param start: auxiliary parameter for recursion
-        :return: integer number
-        """
-        res = start
-        for el in self.children:    # type: Tree
-            res = max(res, el.height(start=start+1))
-        return res
+    def height(self):
+        res = 0
+        for child in self.children:  # type: Tree
+            res = max(child.height(), res)
+        return res + 1
 
     def vert_amount(self) -> int:
         """ Calculates the amount of all the vertices recursively.
@@ -179,7 +173,7 @@ class Tree:
             yield x_coord, y_coord
 
     def make_offsets(self):
-        """ Calculate offsets of all the vertices relative to zero point -
+        """ Calculates offsets of all the vertices relative to zero point -
         the left bound. Uses for drawing without overlaps.
         """
         pre_shifted = 0
@@ -187,21 +181,33 @@ class Tree:
         for child in self.children:  # type: Tree
             child.make_offsets()
 
+            # left and right bounds of child ('some kind of width')
             next_left_bound, next_right_bound = child._max_offsets()
-            shift = (pre_right_bound + 1) - next_left_bound + pre_shifted
 
-            # print(f'shifted {child.value} on {shift}')
+            # shifting of i-th child to right on shift
+            # amount of steps equals to amount of vertices that will
+            # overlap with previous child
+            shift = (pre_right_bound + 1) - next_left_bound + pre_shifted
             child._shift(shift)
 
+            # update values
             pre_right_bound = next_right_bound
             pre_shifted = shift
+
+        # if child only one, we just place the parent on one step above
         if len(self.children) == 1:
             self._offset = self.children[0]._offset
+
+        # else we must place the parent at the middle of line between left and
+        # right children
         elif len(self.children) > 1:
             self._offset = self.children[0]._offset + self.children[-1]._offset
             self._offset /= 2
 
     def _max_offsets(self) -> tuple:
+        """ Calculates the most left and the most right biases of
+        tree (in ones of offset).
+        """
         _min_left = _max_right = self._offset
         for child in self.children:  # type: Tree
             next_left, next_right = child._max_offsets()
@@ -210,6 +216,8 @@ class Tree:
         return _min_left, _max_right
 
     def _shift(self, points):
+        """ Shifts the tree on the 'points' steps right.
+        """
         self._offset += points
         for child in self.children:  # type: Tree
             child._shift(points)
@@ -251,4 +259,4 @@ if __name__ == '__main__':
 
     test_tree.add_child(test_tree)
     test_tree.add_child(test_tree, position=0)
-    test_tree.draw(save_filename='graphs/test.png')
+    test_tree.draw(save_filename='../graphs/test.png')

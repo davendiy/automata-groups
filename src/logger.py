@@ -12,9 +12,9 @@ logger = logging.getLogger("main")
 logger.setLevel(logging.INFO)
 
 # Create handlers
-i_handler = logging.FileHandler('loop.log')
+i_handler = logging.FileHandler('../loop.log')
 c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler('critical.log')
+f_handler = logging.FileHandler('../critical.log')
 
 # all the information will be written to the loop.log
 # all the warning and error will be written to the stdout

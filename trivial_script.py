@@ -7,7 +7,7 @@
 # Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.
 
-from source import GroupElement
+from src.source import GroupElement
 
 with open('critical.log') as file:
     interesting = list(set(file.read().split()))
