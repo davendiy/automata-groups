@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage[english]{babel}
 
+% path to images
 \graphicspath{ {../graphs/} }
 \usepackage[left=2cm,right=2cm,
     top=2cm,bottom=2cm,bindingoffset=0cm]{geometry}
@@ -105,7 +106,10 @@ $$
 \begin{statement}
 	Exact form of function $a(n)$:
 	\begin{equation}
-		 a(n) = n \left(\left\lfloor \log_2 n + 1 \right\rfloor\right) + 2n - 2^{\left\lfloor\log_2 n\right\rfloor + 1}
+		 a(n) = \begin{cases}
+		 n \left(\left\lfloor \log_2 n + 1 \right\rfloor\right) + 2n - 2^{\left\lfloor\log_2 n\right\rfloor + 1}, \quad n > 0 \\
+		 a(0) = 0
+		 \end{cases}
 	\end{equation}
 \end{statement}
 
@@ -176,10 +180,52 @@ $$
 
 \begin{theorem}
  	Elements from abc-subset X have maximum size, or in other words 
- 	$$a (n) = \max (size(w) \,|\, w \in \{a,b,c\}^*, \, |w| = n)$$
+ 	$$a (n) = \max (size(w) \,|\, w \in \{a,b,c\}^n)$$
 \end{theorem}
 
 \begin{proof}
+	Induction on $n$.
+	\begin{enumerate}
+		\item Base: check examples of size calculation.
+		\item Induction step:\\ 
+		Let $\forall k < n \quad a (k) = \max (size(w) \,|\, w \in \{a,b,c\}^k)$. Hereafter we consider any $w \in \{a, b, c\}^{n}, \,\\ w = \pi (w_1, w_2, w_3), \, w_1, w_2, w_3 \in \{a, b, c\}^*\cup \{e\}$. Now we need to show that $size(w) \le a(n)$\\
+		\\
+		Let $ x_1 := |w_1|, \, x_2 := |w_2|, \, x_3 := |w_3|$. If $w$ has maximum size than due to induction hypothesis \\ 
+		\begin{equation}
+			size(w) \le a(x_1) + a(x_2) + a(x_3) + n
+		\end{equation}
+		 (we don't know whether any $w_1, w_2, w_3$ from $X$ could appear in $w$, so we use $\le$ symbol). Let's investigate how big this functional could be.\\
+		\\
+		Consider function $f(x) = x\log_2{x}$ instead of $a(x)$. We can do it because both $f(x)$ and $a(x)$ are monotonically increasing on $x \ge 1$. Thus, they are maximizing in similar way.
+		\\
+		Now we need to solve optimization problem 
+		$$\max(f(x_1) + f(x_2) + f(x_3) \, | x_1>1,\, x_2>1,\, x_3>1,\, x_1 + x_2 + x_3 = n)$$
+		$$F = f(x_1) + f(x_2) + f(x_3) = x_1 \log_2 x_1 + x_2 \log_2 x_2 + x_3 \log_3 x_3 = \Big[x_3 = n - x_1 - x_2\Big] =$$
+		$$ = x_1 \log_2 x_1 + x_2 \log_2 x_2 + (n - x_1 - x_2) \log_2 (n-x_1 - x_2) = $$
+		$$= x_1\log_2 x_1 + x_2 \log_2 x_2 + n \log_2 (n - x_1 - x_2) - x_1 \log_2 (n - x_1 - x_2) - x_2 \log_2(n - x_1 - x_2)$$
+		$$\frac{\partial F}{\partial x_1} = \log_2 x_1 + \frac{1}{\ln 2} - \frac{n}{(n - x_1 - x_2)\ln 2} - \log_2 (n - x_1 - x_2) + \frac{x_1}{(n-x_1 - x_2)\ln 2} + \frac{x_2}{(n - x_1 - x_2) \ln 2}$$
+		$$\frac{\partial F}{\partial x_2} = \log_2 x_2 + \frac{1}{\ln 2} - \frac{n}{(n - x_1 - x_2)\ln 2} - \log_2 (n - x_1 - x_2) + \frac{x_1}{(n-x_1 - x_2)\ln 2} + \frac{x_2}{(n - x_1 - x_2) \ln 2} $$
+		If both $\dfrac{\partial F}{\partial x_1}$ and $\dfrac{\partial F}{\partial x_2}$ equal to zero then $\log_2 x_1 = \log_2 x_2 \, \Rightarrow \, x_1$ should be equal to $x_2$.
+		\\
+		Let's substitute $x = x_1 = x_2$ to F and differentiate it: 
+		
+		$$\frac{d F}{d x} = 2\log_2 x + \frac{2}{\ln 2} - \frac{2n}{(n-2x)\ln2} - 2\log_2 (n - 2x) + \frac{4x}{(n-2x)\ln 2} = 0$$
+		Hence, $x = \dfrac{n}{3}$ - the single solution (Wolfram).
+		Substituting it to $F$ we can find out that $x_1 = x_2 = x_3 = \dfrac{n}{3}$ - global minimum. Thus, F (therefore right part of \textbf{(4)}) reaches its maximum value on the bounds of its domain. 
+		\\
+		Now we are allowed to assume that $\exists i \, w_i = e$, because we know that otherwise
+		$$size(w) \le a(x_1) + a(x_2) + a(x_3) + n \le a\left(
+			\left\lfloor
+				\frac{n}{2}
+			\right\rfloor 
+		\right) + a \left(
+			\left\lceil
+			\frac{n}{2}
+			\right\rceil
+		\right) + n$$
+		It's easy to check that there are only 2 possible types of $w$ with one or more trivial element below: familiar to us $w \in X$ or such $w = z_1 z_2 z_3 ... z_n$ where there are at least one $i$ such that $z_i = z_{i+1}, \, \Rightarrow \, w$ could be reduced $\Rightarrow$ $size(w) < a(n)$ due to definition.
+ 	\end{enumerate}
+
 \end{proof}
 
 
