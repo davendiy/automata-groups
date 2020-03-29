@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*-encoding: utf-8-*-
 
-# created: 22.11.2019
-# by David Zashkolny
-# 3 course, comp math
-# Taras Shevchenko National University of Kyiv
-# email: davendiy@gmail.com
-
+# @Author: David Zashkolny <davidas>
+# @Date:   21-Feb-2020
+# @Email:  davendiy@gmail.com
+# @Last modified by:   davidas
+# @Last modified time: 21-Feb-2020
 
 from sympy.combinatorics import Permutation
 from numpy import lcm
@@ -65,7 +64,7 @@ class AutomataGroupElement:
                 self.name = name
                 self.perm = perm
                 self.el_list = el_list
-                
+
                 with LOCK:
                     AutomataGroupElement.DEFINED_ELEMENTS[self.name] = self
 
