@@ -108,3 +108,6 @@ venv.bak/
 *.aux
 *.fuse_hidden*
 *.syntex.gz
+
+# pycharm
+.idea
