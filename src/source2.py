@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
 # -*-encoding: utf-8-*-
 
-# created: 04.01.2020
-# by David Zashkolny
-
 # Excusa. Quod scripsi, scripsi.
-# 3 course, comp math
-# Taras Shevchenko National University of Kyiv
-# email: davendiy@gmail.com
+# @Author: David Zashkolny <davidas>
+# @Date:   21-Feb-2020
+# @Email:  davendiy@gmail.com
+# @Last modified by:   davidas
+# @Last modified time: 21-Feb-2020
 
 from src.trees import *
 from sympy.combinatorics import Permutation
 from collections import deque
 import numpy as np
+import psutil
+import os
 
 # TODO: replace all the refs in trees with weakrefs, or
 #  implement the delete method in right way
 
 
 TRIVIAL_PERM = Permutation([0, 1, 2])
+CHUNK = 1 * 1024 * 1024 * 1024
+
+process = psutil.Process(os.getpid())
 
 
 # TODO: YOU MUST ADD COMMENTS
@@ -92,7 +96,7 @@ class AutomataTreeNode(Tree):
         return self._vert_amount
 
     def size(self):
-        if self.reverse:
+        if self.reverse or self.value == 'e':
             return 0
         if self._size is None:
             self._size = len(self.name)
@@ -131,7 +135,8 @@ class AutomataTreeNode(Tree):
                 yield x_coord, y_coord
 
     def draw(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
-             save_filename='', show_full=False, y_scale_mul=3, lbn=False):
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False,
+             show_names=True):
         """ Draws the tree in matplotlib.
 
         :param start_x: x coordinate of the start position on the plane
@@ -150,6 +155,7 @@ class AutomataTreeNode(Tree):
                             It's used for bigger step between generations
         :param lbn: leaves belong names, True if you want to print names
                     of leaves belong them
+        :param show_names: True if you want to plot the names of vertices
         """
         fig, ax = plt.subplots(figsize=(20, 20))
         # ax = fig.add_subplot(111)
@@ -173,7 +179,8 @@ class AutomataTreeNode(Tree):
         # ------------------------draw vertices---------------------------------
         used_colors = set()    # for legend
         self._draw(ax, start_x, start_y, scale, radius, fontsize, show_full=show_full,
-                   y_scale_mul=y_scale_mul, used_colors=used_colors, lbn=lbn)
+                   y_scale_mul=y_scale_mul, used_colors=used_colors, lbn=lbn,
+                   show_names=show_names)
 
         # auxiliary circles with labels
         # used for legend
@@ -197,7 +204,7 @@ class AutomataTreeNode(Tree):
 
     def _draw(self, ax, start_x, start_y, scale, radius,
               fontsize, deep=0, show_full=False, y_scale_mul=3, used_colors=None,
-              lbn=False):
+              lbn=False, show_names=True):
         """ Auxiliary recursive (DFS) function for drawing the vertices of tree.
 
         :param ax: matplotlib object for plotting
@@ -238,22 +245,24 @@ class AutomataTreeNode(Tree):
             used_colors.add('k')
         ax.add_patch(circle)
 
-        # bias for printing the name above or belong the node
-        # belong is used just for
-        if (not self.children or (self.simplify and not show_full)) and lbn:
-            bias = -2
-        else:
-            bias = 1
-        ax.annotate(str(self.value), xy=(x_coord, y_coord + radius * bias),
-                    xytext=(-fontsize * (len(str(self.value))//3), 2 * bias),
-                    textcoords='offset pixels',
-                    fontsize=fontsize)
+        if show_names:
+            # bias for printing the name above or belong the node
+            # belong is used just for
+            if (not self.children or (self.simplify and not show_full)) and lbn:
+                bias = -2
+            else:
+                bias = 1
+            ax.annotate(str(self.value), xy=(x_coord, y_coord + radius * bias),
+                        xytext=(-fontsize * (len(str(self.value))//3), 2 * bias),
+                        textcoords='offset pixels',
+                        fontsize=fontsize)
 
         # continue plotting of children if given parameters allow
         if not self.simplify or show_full:
             for child in self.children:       # type: AutomataTreeNode
                 child._draw(ax, start_x, start_y, scale, radius, fontsize,
-                            deep + 1, show_full, y_scale_mul, used_colors, lbn)
+                            deep + 1, show_full, y_scale_mul, used_colors, lbn,
+                            show_names=show_names)
 
     def add_child(self, child, position=None):
         if isinstance(child, AutomataTreeNode):
@@ -306,10 +315,13 @@ class AutomataGroupElement:
         cls.__instances = {}
 
     def __new__(cls, name, *args, **kwargs):
-        if name not in AutomataGroupElement.__instances:
+        if name not in AutomataGroupElement.__instances and \
+                                    process.memory_info()[0] < CHUNK:
             AutomataGroupElement.__instances[name] = \
                 super(AutomataGroupElement, cls).__new__(cls)
-        return AutomataGroupElement.__instances[name]
+            return AutomataGroupElement.__instances[name]
+        else:
+            return super(AutomataGroupElement, cls).__new__(cls)
 
     def __init__(self, name, permutation=TRIVIAL_PERM,
                  children=(AutomataTreeNode(reverse=True),
@@ -341,6 +353,14 @@ class AutomataGroupElement:
     @property
     def permutation(self) -> Permutation:
         return self.tree.permutation
+
+    def __iter__(self):
+        for subtree in self.tree.children:
+            if subtree.reverse:
+                yield self
+            else:
+                yield AutomataGroupElement(subtree.name, subtree.permutation,
+                                           subtree.children, subtree.simplify)
 
     def __getitem__(self, item):
         if not isinstance(item, int):
@@ -409,11 +429,13 @@ class AutomataGroupElement:
         return AutomataGroupElement(res_name, res_permutation, res_children)
 
     def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
-             save_filename='', show_full=False, y_scale_mul=3, lbn=False):
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False,
+             show_names=True):
         self.tree.draw(start_x=start_x, start_y=start_y,
                        scale=scale, radius=radius,
                        fontsize=fontsize, y_scale_mul=y_scale_mul,
-                       save_filename=save_filename, show_full=show_full, lbn=lbn)
+                       save_filename=save_filename, show_full=show_full, lbn=lbn,
+                       show_names=show_names)
 
 
 def from_string(string) -> AutomataGroupElement:
@@ -436,6 +458,20 @@ def initial_state():
                              children=(e, reverse_node(), e), simplify=True)
     c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
                              children=(reverse_node(), e, e), simplify=True)
+
+
+def permute(seq, repeat):
+    if repeat == 1:
+        for el in seq:
+            yield [el]
+    elif repeat < 1:
+        yield []
+    else:
+        for prev in permute(seq, repeat-1):
+            for el in seq:
+                if prev[-1] == el:
+                    continue
+                yield prev + [el]
 
 
 e = a = b = c = None

@@ -17,7 +17,7 @@ import os
 import psutil
 import time
 
-CHUNK = 5 * 1024 * 1024 * 1024
+CHUNK = 1 * 1024 * 1024 * 1024
 
 done1 = Value('f', 0)
 done2 = Value('f', 0)
