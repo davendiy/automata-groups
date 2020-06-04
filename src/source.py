@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*-encoding: utf-8-*-
 
-# @Author: David Zashkolny <davidas>
-# @Date:   21-Feb-2020
-# @Email:  davendiy@gmail.com
-# @Last modified by:   davidas
-# @Last modified time: 21-Feb-2020
+# created: 13.11.2019
+# Excusa. Quod scripsi, scripsi.
+
+# by David Zashkolny
+# email: davendiy@gmail.com
 
 from sympy.combinatorics import Permutation
 from numpy import lcm

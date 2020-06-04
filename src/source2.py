@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*-encoding: utf-8-*-
 
+# created: 21.02.2020
 # Excusa. Quod scripsi, scripsi.
-# @Author: David Zashkolny <davidas>
-# @Date:   21-Feb-2020
-# @Email:  davendiy@gmail.com
-# @Last modified by:   davidas
-# @Last modified time: 21-Feb-2020
+
+# by David Zashkolny
+# email: davendiy@gmail.com
+
 
 from src.trees import *
 from sympy.combinatorics import Permutation
@@ -58,8 +58,8 @@ class AutomataTreeNode(Tree):
         :param value: name of element (will be printed on picture)
         :param reverse: True if this node means the recursive callback of
                         the parent
-        :param simplify: True if it could be draw as point with name
-                         (like e, or another atoms)
+        :param simplify: True if it could be drawn as point with name
+                         (e.g. for e, a, b, c)
         """
         self.permutation = permutation
         self.reverse = reverse
@@ -78,7 +78,7 @@ class AutomataTreeNode(Tree):
     def name(self):
         return self.value
 
-    def height(self):
+    def height(self) -> int:
         if self._height is None:
             self._height = 0
             for child in self.children:  # type: AutomataTreeNode
@@ -95,7 +95,7 @@ class AutomataTreeNode(Tree):
                 self._vert_amount += el.vert_amount()
         return self._vert_amount
 
-    def size(self):
+    def size(self) -> int:
         if self.reverse or self.value == 'e':
             return 0
         if self._size is None:
@@ -302,6 +302,48 @@ class AutomataTreeNode(Tree):
 
 
 class AutomataGroupElement:
+    """ Implementation of an element of an automatic group.
+
+    This class represents any element that has structure
+    g = \\pi (g_1, g_2, g_3). Group defines by initialising an alphabet of
+    its generators {a1, a2, a3 ...} using __init__ method and then for every
+    word w from the alphabet corresponding element can be created using
+    function $$$ from_string $$$.
+
+    a = AutomataGroupElement(name, permutation, children)
+
+    :param name: the name of an atom (for instance a, b, c, e for H3)
+    :param permutation: object sympy.combinatorics.Permutation
+    :param children: a list of AutomataTreeNode or AutomataGroupElement
+                     elements that defines tree-like structure of the element
+                     (first-level state). Those elements should have $ name $
+                     of the respective atom or have parameter $ reverse $ with
+                     value True that means recursive call.
+
+    :param simplify: True if it could be drawn as point with name
+                         (e.g. for e, a, b, c)
+
+    Example of using:
+    >>> e = AutomataGroupElement('e', simplify=True)
+    >>> a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]), \
+                                 children=(e, e, reverse_node()), simplify=True)
+    >>> b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]), \
+                                 children=(e, reverse_node(), e), simplify=True)
+    >>> c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]), \
+                                 children=(reverse_node(), e, e), simplify=True)
+    >>> from_string('abcbabcbabcbabc')
+    abcbabcbabcbabc = (0 2) (acacacac, bbb, bbbb)
+
+
+    As you can see element is completely defined by it's tree structure.
+    The multiplication of two elements is just combining of their trees in some way.
+
+    WARNING: you can't create in such way elements that reffers to each other,
+    for example
+                 a = ()(a, b, e)      and  b = ()(b, e, a)
+    because such elements don't have tree-like structure.
+    Well in fact, you can do it but I don't guarantee it will work properly.
+    """
 
     __instances = {}
 
@@ -328,12 +370,31 @@ class AutomataGroupElement:
                            AutomataTreeNode(reverse=True),
                            AutomataTreeNode(reverse=True)),
                  simplify=False):
+        """ Initialisation of atomic elements.
+
+        :param name: the name of an atom (for instance a, b, c, e for H3)
+        :param permutation: object sympy.combinatorics.Permutation
+        :param children: a list of AutomataTreeNode elements that defines
+                         tree-like structure of the element. Those elements
+                         should have $ name $ of the respective
+                         atom or have parameter $ reverse $ with value True
+                         that means recursive call.
+        :param simplify: True if it could be drawn as point with name
+                         (e.g. for e, a, b, c)
+        """
+
         self.name = name
 
         self.tree = AutomataTreeNode(permutation=permutation,
                                      value=name, simplify=simplify)
         for child in children:
             self.add_child(child)
+
+    def __len__(self):
+        if self.name == 'e':
+            return 0
+        else:
+            return len(self.name)
 
     @classmethod
     def from_cache(cls, el):
@@ -417,7 +478,7 @@ class AutomataGroupElement:
         if res_name in self.__instances:
             return self.__instances[res_name]
 
-        res_permutation = other.permutation * self.permutation
+        res_permutation = other.permutation * self.permutation    # other(self())
         res_children = []
         for i in range(len(self.tree.children)):
             self_child = self[i ^ other.permutation]  # type: AutomataGroupElement
@@ -427,6 +488,33 @@ class AutomataGroupElement:
             else:
                 res_children.append(self_child * other_child)
         return AutomataGroupElement(res_name, res_permutation, res_children)
+
+    def __pow__(self, power):
+        if power == -1:
+            return from_string(self.name[::-1])
+        else:
+            res = AutomataGroupElement.from_cache('e')
+            tmp = self
+            i = 1
+            while i <= power:
+                if i & power:
+                    res *= tmp
+                i <<= 1
+                tmp *= tmp
+            return res
+
+    def order(self):
+        if self.is_trivial():
+            return 1
+
+        perm_order = self.tree.permutation.order()
+        tmp = self ** int(perm_order)
+        if (tmp[0].name == tmp[0].name[::-1]
+                and tmp[1].name == tmp[1].name[::-1]
+                and tmp[2].name == tmp[2].name[::-1]):
+            return perm_order * 2 if not tmp.is_trivial() else perm_order
+        else:
+            return float('inf')
 
     def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
              save_filename='', show_full=False, y_scale_mul=3, lbn=False,
@@ -438,9 +526,18 @@ class AutomataGroupElement:
                        show_names=show_names)
 
 
-def from_string(string) -> AutomataGroupElement:
+def from_string(w: str) -> AutomataGroupElement:
+    """ Get element that related to the given string.
+
+    For example, you can define atomic elements 'a' 'b' and 'c' and then
+    get an element 'ababababacbcbabc'
+
+    Complexity - O(n * V), where n = |w| and V = v(w) (amount of vertices)
+
+    :param w: a word over an alphabet formed by atomic elements.
+    """
     res = AutomataGroupElement.from_cache('e')
-    for el in string:
+    for el in w:
         res *= AutomataGroupElement.from_cache(el)
     return res
 
@@ -474,7 +571,7 @@ def permute(seq, repeat):
                 yield prev + [el]
 
 
-e = a = b = c = None
+e = a = b = c = ...     # type: AutomataGroupElement
 initial_state()
 
 if __name__ == '__main__':
