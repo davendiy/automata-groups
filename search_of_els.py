@@ -3,8 +3,6 @@
 
 # created: 28.02.2020
 # by David Zashkolny
-# 3 course, comp math
-# Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
 from multiprocessing import Value, Process
@@ -27,7 +25,7 @@ def info():
         print(f"[*] done1: {str(done1.value)[:5]}%;  "
               f"done2: {str(done2.value)[:5]}%; "
               f"done3: {str(done3.value)[:5]}%; "
-              f"memory usage: {memory / (CHUNK * 3) * 100}%;     ", end='')
+              f"memory usage: {memory / (MEMORY_SIZE * 3) * 100}%;     ", end='')
         time.sleep(1)
 
         if done1.value >= 99.999 and done2.value >= 99.999 \
@@ -52,9 +50,9 @@ def task(n, done, memory):
                 res.append(tmp_el)
             i += 1
 
-            if memory.value > CHUNK:
+            if memory.value > MEMORY_SIZE:
                 AutomataGroupElement.clear_memory()
-                initial_state()
+                _generate_H3()
 
             with done.get_lock():
                 done.value = i / all_amount * 100

@@ -14,15 +14,22 @@ from collections import deque
 import numpy as np
 import psutil
 import os
+import gc
 
 # TODO: replace all the refs in trees with weakrefs, or
 #  implement the delete method in right way
 
 
 TRIVIAL_PERM = Permutation([0, 1, 2])
-CHUNK = 1 * 1024 * 1024 * 1024
+MEMORY_SIZE = 1 * 1024 * 1024 * 1024
 
 process = psutil.Process(os.getpid())
+
+def lcm(x, y):
+    if x == float('inf') or y == float('inf'):
+        return float('inf')
+    else:
+        return np.lcm(x, y)
 
 
 # TODO: YOU MUST ADD COMMENTS
@@ -33,19 +40,32 @@ class AutomataTreeNode(Tree):
     # color of the vertex depends on its permutation
     # could be changed into 'unique color for each permutation'
     # now color is unique for each possible order of permutation
+    # _colors = {
+    #     '(2)': 'y',
+    #     '(0 1 2)': 'r',
+    #     '(0 2 1)': 'r',
+    #     '(2)(0 1)': 'b',
+    #     '(0 2)': 'b',
+    #     '(1 2)': 'b'
+    # }
+    #
+
     _colors = {
-        '(2)': 'y',
-        '(0 1 2)': 'r',
-        '(0 2 1)': 'r',
-        '(2)(0 1)': 'b',
-        '(0 2)': 'b',
-        '(1 2)': 'b'
+        1: 'y',
+        2: 'b',
+        3: 'r',
+        4: 'c',
+        5: 'm',
+        6: 'g'
     }
 
     # corresponding labels for colors
     _labels = {
-        'r': 'permutation of order 3',
         'b': 'permutation of order 2',
+        'r': 'permutation of order 3',
+        'c': 'permutation of order 4',
+        'm': 'permutation of order 5',
+        'g': 'permutation of order 6',
         'y': 'trivial permutation',
         'k': 'reverse node'
     }
@@ -64,12 +84,11 @@ class AutomataTreeNode(Tree):
         self.permutation = permutation
         self.reverse = reverse
         self.simplify = simplify
-        self._height = None
-        self._vert_amount = None
+
         self._size = None
 
         if reverse:
-            value = 'δ'      # delta is just similar to spiral arrow (like reverse in uno)
+            value = '@'
         elif value is None:
             value = str(permutation)
         super().__init__(value)
@@ -77,23 +96,6 @@ class AutomataTreeNode(Tree):
     @property
     def name(self):
         return self.value
-
-    def height(self) -> int:
-        if self._height is None:
-            self._height = 0
-            for child in self.children:  # type: AutomataTreeNode
-                self._height = max(child.height(), self._height)
-            self._height += 1
-        return self._height
-
-    def vert_amount(self) -> int:
-        """ Calculates the amount of all the vertices recursively.
-        """
-        if self._vert_amount is None:
-            self._vert_amount = 1
-            for el in self.children:    # type: AutomataTreeNode
-                self._vert_amount += el.vert_amount()
-        return self._vert_amount
 
     def size(self) -> int:
         if self.reverse or self.value == 'e':
@@ -172,7 +174,7 @@ class AutomataTreeNode(Tree):
 
         # fontsize measured in pixels (unlike the radius and another distances
         # on plane), so we need to change its value in order to save the
-        # size when matplotlib will use autoscale for picture
+        # size when matplotlib use autoscale for picture
         fontsize = fontsize / (np.log(self.vert_amount()))
         ax.plot(x_coords, y_coords, linewidth=0.5)
 
@@ -236,7 +238,7 @@ class AutomataTreeNode(Tree):
         # plots circles for nodes with different permutations
         # using different colors
         if not self.reverse:
-            color = AutomataTreeNode._colors[str(self.permutation)]
+            color = AutomataTreeNode._colors[self.permutation.order()]
             circle = plt.Circle((x_coord, y_coord), radius=radius, color=color)
             used_colors.add(color)
         else:
@@ -294,11 +296,22 @@ class AutomataTreeNode(Tree):
         res = AutomataTreeNode(self.permutation, self.value,
                                self.reverse, self.simplify)
         res._size = self._size
-        res._height = self._height
-        res._vert_amount = self._vert_amount
+
         for child in self.children:   # type: AutomataTreeNode
             res.add_child(child)
         return res
+    #
+    # def __del__(self):
+    #     del self.permutation
+    #     del self.reverse
+    #     del self.simplify
+    #     del self._height
+    #     del self._vert_amount
+    #     del self._size
+    #     for child in self.children:
+    #         del child
+    #     del self.children
+    #
 
 
 class AutomataGroupElement:
@@ -346,22 +359,40 @@ class AutomataGroupElement:
     """
 
     __instances = {}
+    __save_instances = True
 
     @classmethod
     def defined_size(cls):
         return len(cls.__instances)
 
     @classmethod
-    def clear_memory(cls):
+    def _saved(cls):
+        return cls.__instances
+
+    @classmethod
+    def _disable_saving(cls):
+        cls.__save_instances = False
+
+    @classmethod
+    def _enable_saving(cls):
+        cls.__save_instances = True
+
+    @classmethod
+    def clear_memory(cls, save_vars=True):
         del cls.__instances
+        gc.collect()
         cls.__instances = {}
+        if save_vars:
+            for _, value in globals().copy().items():
+                if isinstance(value, cls) and \
+                        value.name not in cls.__instances:
+                    cls.__instances[value.name] = value
 
     def __new__(cls, name, *args, **kwargs):
-        if name not in AutomataGroupElement.__instances and \
-                                    process.memory_info()[0] < CHUNK:
-            AutomataGroupElement.__instances[name] = \
-                super(AutomataGroupElement, cls).__new__(cls)
-            return AutomataGroupElement.__instances[name]
+        if cls.__save_instances and process.memory_info()[0] < MEMORY_SIZE:
+            if name not in cls.__instances:
+                cls.__instances[name] = super(AutomataGroupElement, cls).__new__(cls)
+            return cls.__instances[name]
         else:
             return super(AutomataGroupElement, cls).__new__(cls)
 
@@ -388,7 +419,8 @@ class AutomataGroupElement:
         self.tree = AutomataTreeNode(permutation=permutation,
                                      value=name, simplify=simplify)
         for child in children:
-            self.add_child(child)
+            self._add_child(child)
+        self._calc_order = None
 
     def __len__(self):
         if self.name == 'e':
@@ -402,7 +434,8 @@ class AutomataGroupElement:
             raise ValueError(f"Not initialized element: {el}")
         return cls.__instances[el]
 
-    def add_child(self, child):
+    # WARNING: don't use it after init
+    def _add_child(self, child):
         if isinstance(child, AutomataTreeNode):
             local_child = child.copy()
         elif isinstance(child, AutomataGroupElement):
@@ -504,17 +537,51 @@ class AutomataGroupElement:
             return res
 
     def order(self):
-        if self.is_trivial():
-            return 1
+        if self._calc_order is None:
+            self._disable_saving()
+            _ = self._order()
+            self._enable_saving()
+        return self._calc_order
 
-        perm_order = self.tree.permutation.order()
-        tmp = self ** int(perm_order)
-        if (tmp[0].name == tmp[0].name[::-1]
-                and tmp[1].name == tmp[1].name[::-1]
-                and tmp[2].name == tmp[2].name[::-1]):
-            return perm_order * 2 if not tmp.is_trivial() else perm_order
-        else:
-            return float('inf')
+    def _order(self, checked=None):
+        if self._calc_order is not None:
+            return self._calc_order
+        checked = set() if checked is None else checked
+
+        res_order = int(self.permutation.order())
+        tmp = self ** res_order
+        if tmp.is_trivial():
+            return res_order
+        lcm_perm = 1
+        checked.add(self.name)
+        for el in tmp:
+
+            if el.name in checked:
+                res_order = float('inf')
+                break
+            lcm_perm = lcm(lcm_perm, el._order(checked))
+        checked.remove(self.name)
+        res_order = res_order * lcm_perm
+        self._calc_order = res_order
+        return res_order
+
+    # def order2_0(self):
+    #     orbits = self.permutation.cyclic_form
+    #     for orbit in orbits:
+
+    def is_finite2_0(self, graph, path='', checked=None):
+        if checked is None:          # TODO: replace set of names with
+            checked = set()          #  structure of reduced names
+
+        checked.add(self.name)
+        orbits = self.permutation.cyclic_form
+        for orbit in orbits:
+            next_index = orbit[0]
+            next_el = self ** len(orbit)
+
+    def is_finite(self):
+        if self._calc_order is not None:
+            return self._calc_order < float('inf')
 
     def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
              save_filename='', show_full=False, y_scale_mul=3, lbn=False,
@@ -546,17 +613,6 @@ def reverse_node():
     return AutomataTreeNode(reverse=True)
 
 
-def initial_state():
-    global e, a, b, c
-    e = AutomataGroupElement('e', simplify=True)
-    a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]),
-                             children=(e, e, reverse_node()), simplify=True)
-    b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]),
-                             children=(e, reverse_node(), e), simplify=True)
-    c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
-                             children=(reverse_node(), e, e), simplify=True)
-
-
 def permute(seq, repeat):
     if repeat == 1:
         for el in seq:
@@ -571,23 +627,48 @@ def permute(seq, repeat):
                 yield prev + [el]
 
 
-e = a = b = c = ...     # type: AutomataGroupElement
-initial_state()
+e = a = b = c = d = f = g = ...     # type: AutomataGroupElement
+
+
+def _generate_H3():
+    AutomataGroupElement.clear_memory(save_vars=False)
+    global e, a, b, c, TRIVIAL_PERM
+    TRIVIAL_PERM = Permutation([0, 1, 2])
+    e = AutomataGroupElement('e', simplify=True)
+    a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]),
+                             children=(e, e, reverse_node()), simplify=True)
+    b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]),
+                             children=(e, reverse_node(), e), simplify=True)
+    c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
+                             children=(reverse_node(), e, e), simplify=True)
+
+
+def _generate_H4():
+    AutomataGroupElement.clear_memory(save_vars=False)
+    global e, a, b, c, d, f, g, TRIVIAL_PERM
+    TRIVIAL_PERM = Permutation([0, 1, 2, 3])
+    e = AutomataGroupElement('e', children=[reverse_node() for _ in range(4)],
+                             simplify=True)
+    a = AutomataGroupElement('a', permutation=Permutation([0, 2, 1, 3]),
+                             children=(reverse_node(), e, e, reverse_node()),
+                             simplify=True)
+    b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0, 3]),
+                             children=(e, reverse_node(), e, reverse_node()),
+                             simplify=True)
+    c = AutomataGroupElement('c', permutation=Permutation([1, 0, 2, 3]),
+                             children=(e, e, reverse_node(), reverse_node()),
+                             simplify=True)
+    d = AutomataGroupElement('d', permutation=Permutation([0, 1, 3, 2]),
+                             children=(reverse_node(), reverse_node(), e, e),
+                             simplify=True)
+    f = AutomataGroupElement('f', permutation=Permutation([0, 3, 2, 1]),
+                             children=(reverse_node(), e, reverse_node(), e),
+                             simplify=True)
+    g = AutomataGroupElement('g', permutation=Permutation([3, 1, 2, 0]),
+                             children=(e, reverse_node(), reverse_node(), e),
+                             simplify=True)
+
 
 if __name__ == '__main__':
-    e.show(show_full=True)
-    a.show(show_full=True)
-    b.show(show_full=True)
-    c.show(show_full=True)
-
-    ab = a * b
-    abc = ab * c
-    abc.show(show_full=True)
-    abc.show()
-    abc.show(show_full=True)
-
-    abcc = abc * c
-    abcc.show()
-
-    test = from_string('cbcbacabacacbcabacabac')
-    test.show(save_filename='../graphs/test.png', show_full=True)
+    _generate_H4()
+    ((a * b * c * a * c * b * d * d)**3).is_trivial()

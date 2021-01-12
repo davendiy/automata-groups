@@ -5,8 +5,6 @@
 # Excusa. Quod scripsi, scripsi.
 
 # by David Zashkolny
-# 3 course, comp math
-# Taras Shevchenko National University of Kyiv
 # email: davendiy@gmail.com
 
 
@@ -49,7 +47,7 @@ def info():
         print(f"[*] done1: {str(done1.value)[:4]}%;  "
               f"done2: {str(done2.value)[:4]}%; "
               f"done3: {str(done3.value)[:4]}%; "
-              f"memory usage: {memory / CHUNK * 100}%;     ", end='')
+              f"memory usage: {memory / MEMORY_SIZE * 100}%;     ", end='')
         time.sleep(1)
 
         if done1.value >= 99.999 and done2.value >= 99.999 \
@@ -58,7 +56,7 @@ def info():
 
 
 def task(n, done, memory):
-    process = psutil.Process(os.getpid())
+    _process = psutil.Process(os.getpid())
     res_heights = []
     res_sizes = []
     res_amounts = []
@@ -80,9 +78,9 @@ def task(n, done, memory):
                                )
                     print(f"\n[***] SAVED TO task2_v2_n{n}.txt")
                 k = 0
-            if memory.value > CHUNK // 3:
+            if memory.value > MEMORY_SIZE // 3:
                 AutomataGroupElement.clear_memory()
-                initial_state()
+                _generate_H3()
 
             tmp_el = from_string(el)
             res_heights.append(tmp_el.tree.height())
@@ -96,7 +94,7 @@ def task(n, done, memory):
             with done.get_lock():
                 done.value = i / all_amount * 100
             with memory.get_lock():
-                memory.value = process.memory_info()[0]
+                memory.value = _process.memory_info()[0]
 
     except Exception as exc:
         print("[ERROR]", exc)

@@ -50,7 +50,7 @@ class AutomataGroupElement:
             if name in AutomataGroupElement.DEFINED_ELEMENTS:
                 tmp = AutomataGroupElement.DEFINED_ELEMENTS[name]
                 self.name = tmp.name
-                self.perm = tmp.perm
+                self.perm = tmp._perm
                 self.el_list = tmp.el_list
             else:
                 assert isinstance(perm, Permutation), "bad type of permutation"
@@ -101,11 +101,11 @@ class AutomataGroupElement:
             return self
 
         res_name = self.name + other.name
-        res_perm = other.perm * self.perm
+        res_perm = other._perm * self.perm
 
         res_els = []
         for i in range(3):
-            tmp1 = self.el_list[i ^ other.perm]
+            tmp1 = self.el_list[i ^ other._perm]
             tmp2 = other.el_list[i]
             tmp_res = tmp1 + tmp2
             tmp_res = tmp_res.replace('aa', '').replace('bb', '').replace('cc', '').replace('e', '')
