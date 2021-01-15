@@ -7,33 +7,39 @@
 # by David Zashkolny
 # email: davendiy@gmail.com
 
-from .source2 import *
+
+def gcd(x, y):
+    while y:
+        x, y = y, x % y
+    return x
 
 
-def random_el(n):
-    space = ['a', 'b', 'c']
-    first = np.random.choice(space)
-    res = [first]
-    for i in range(1, n):
-        if res[i-1] == 'a':
-
-            res.append(np.random.choice(['b', 'c']))
-        elif res[i-1] == 'b':
-            res.append(np.random.choice(['a', 'c']))
-        else:
-            res.append(np.random.choice(['a', 'b']))
-    return ''.join(res)
+def lcm(x, y):
+    if x == float('inf') or y == float('inf'):
+        return float('inf')
+    else:
+        return x * y // gcd(x, y)
 
 
-def permute(seq, repeat):
+def permute(space, repeat, allow_same_neighbours=False):
     if repeat == 1:
-        for el in seq:
+        for el in space:
             yield [el]
     elif repeat < 1:
         yield []
     else:
-        for prev in permute(seq, repeat-1):
-            for el in seq:
-                if prev[-1] == el:
+        for prev in permute(space, repeat - 1, allow_same_neighbours=allow_same_neighbours):
+            for el in space:
+                if prev[-1] == el and not allow_same_neighbours:
                     continue
                 yield prev + [el]
+
+
+def all_words(space, allow_same_neighbours=False):
+    i = 1
+    while True:
+        for el in permute(space, repeat=i, allow_same_neighbours=allow_same_neighbours):
+            yield ''.join(el)
+        i += 1
+
+

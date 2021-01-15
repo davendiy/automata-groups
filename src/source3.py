@@ -8,25 +8,16 @@
 # email: davendiy@gmail.com
 
 
-from sympy.combinatorics import Permutation
+from .permutation import Permutation
+from .tools import lcm
+
+from functools import wraps
+import warnings
 import typing as tp
 from collections import defaultdict
 
-
-ORDER_MAX_DEEP = 100
-
-
-def gcd(x, y):
-    while y:
-        x, y = y, x % y
-    return x
-
-
-def lcm(x, y):
-    if x == float('inf') or y == float('inf'):
-        return float('inf')
-    else:
-        return x * y // gcd(x, y)
+ORDER_MAX_DEEP = 30
+REVERSE_VALUE = '@'
 
 
 class OutOfGroupError(TypeError):
@@ -72,11 +63,20 @@ class MaximumOrderDeepError(RecursionError):
         return f'Reached maximum deep while finding order for {self.name}'
 
 
+def _check_group(method):
+    @wraps(method)
+    def res_method(self, *args, **kwargs):
+        if self.parent_group is None:
+            raise OutOfGroupError(self.name, method.__name__)
+        return method(self, *args, **kwargs)
+
+    return res_method
+
+
 class AutomataGroupElement:
 
-    def __init__(self,  name, permutation,
-                 children=None, simplify=False, group=None):
-
+    def __init__(self, name, permutation,
+                 children=None, is_atom=False, group=None):
         self.name = name
         self._perm = permutation
 
@@ -90,16 +90,21 @@ class AutomataGroupElement:
                              f"{self._perm.size}, got {len(self.children)}")
 
         self.__group = group   # type: AutomataGroup
-        self.simplify = simplify
+        self.simplify = is_atom
         self._tree = None
         self._is_one = None
         self._order = None
+        self._is_finite = None
 
     def __len__(self):
         if self.name == 'e':
             return 0
         else:
             return len(self.name)
+
+    @property
+    def tree(self):
+        return self._tree
 
     @property
     def permutation(self) -> Permutation:
@@ -110,66 +115,61 @@ class AutomataGroupElement:
         return len(self.children)
 
     @property
-    def parent(self):
+    def parent_group(self):
         return self.__group
 
-    @parent.setter
-    def parent(self, value):
+    @parent_group.setter
+    def parent_group(self, value):
         if not isinstance(value, AutomataGroup):
-            raise TypeError(f"Parent should be intance of Automata group, not {type(value)}")
+            raise TypeError(f"Parent should be instance of Automata group, not {type(value)}")
         self.__group = value
         self._is_one = None
         self._order = None
+        self._is_finite = None
 
+    @_check_group
     def __iter__(self):
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'iter_children')
         for el in self.children:
-            yield self.parent(el)
+            yield self.parent_group(el)
 
+    @_check_group
     def __getitem__(self, item):
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'get_item')
-
         if isinstance(item, int):
-            return self.parent(self.children[item])
+            return self.parent_group(self.children[item])
         elif isinstance(item, tuple):
             res = self
             for el in item:
-                res = self.parent(res[el])
+                res = self.parent_group(res[el])
             return res
         else:
             raise TypeError(f"Tree indices must be int or tuple, not {type(item)}")
 
     def __repr__(self):
-        return f'{self.parent.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
+        return f'{self.parent_group.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
 
     def __str__(self):
         return self.__repr__()
 
+    @_check_group
     def __mul__(self, other):
         if not isinstance(other, AutomataGroupElement):
             raise TypeError("Bad type for multiplier.")
-        if self.parent is None:
-            raise OutOfGroupError(self.name, '__mul__')
-        if self.parent != other.parent:
-            raise DifferentGroupsError(self.parent, other.parent)
-        return self.parent.multiply(self, other)
+        if self.parent_group != other.parent_group:
+            raise DifferentGroupsError(self.parent_group, other.parent_group)
+        return self.parent_group.multiply(self, other)
 
+    @_check_group
     def __pow__(self, power):
         if not isinstance(power, int):
             raise TypeError(f"Power type should be int, not {type(power)}")
 
-        if self.parent is None:
-            raise OutOfGroupError(self.name, '__pow__')
-
         if power == -1:
-            return self.parent(self.name[::-1])
+            return self.parent_group(self.name[::-1])
 
-        if self.parent.is_defined(self.name * power):
-            return self.parent(self.name * power)
+        if self.parent_group.is_defined(self.name * power):
+            return self.parent_group(self.name * power)
 
-        res = self.parent.one()
+        res = self.parent_group.one
         tmp = self
         i = 1
         while i <= power:
@@ -179,94 +179,107 @@ class AutomataGroupElement:
             tmp *= tmp
         return res
 
-    def is_one(self):
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'is_one')
+    @_check_group
+    def is_one(self, use_cache=True):
+
+        if use_cache and self._is_one is not None:
+            return self._is_one
 
         if self.name == 'e':
-            return True
-        if self.permutation.order() != 1:
-            return False
+            self._is_one = True
+        elif self.permutation.order() != 1:
+            self._is_one = False
+        else:
+            queue = set()
+            queue.update(el for el in self.children if el != self.name)
+            res = True
+            while queue:
+                tmp = queue.pop()
+                child = self.parent_group(tmp)
 
-        queue = set()
-        queue.update(el for el in self.children if el != self.name)
-        res = True
-        while queue:
-            tmp = queue.pop()
-            child = self.parent(tmp)
+                if child.permutation.order() != 1:
+                    res = False
+                    break
+                queue.update(el for el in child.children if el != child.name)
+            self._is_one = res
+        return self._is_one
 
-            if child.permutation.order() != 1:
-                res = False
-                break
-            queue.update(el for el in child.children if el != child.name)
-        return res
+    @_check_group
+    def order(self, check_finite=True, use_cache=True):
+        if use_cache and self._order is not None:
+            return self._order
 
-    def order(self, check_finite=True):
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'order')
         if self.is_one():
-            return 1
-        if check_finite and not self.is_finite():
-            return float('inf')
+            self._order = 1
+        elif check_finite and not self.is_finite():
+            self._order = float('inf')
+        else:
+            power = int(self.permutation.order())
+            next_el = self ** power
+            res = 1
+            for el in next_el:    # type: AutomataGroupElement
+                res = lcm(res, el.order(check_finite=False, use_cache=use_cache))
+            self._order = res * power
+        return self._order
 
-        power = int(self.permutation.order())
-        next_el = self ** power
-        res = 1
-        for el in next_el:
-            res = lcm(res, el.order(check_finite=False))
-        res *= power
-        return res
-
+    @_check_group
     def is_finite(self, cur_power=1, checked=None,
-                        check_only_0=False, deep=1):
+                        check_only_0=False, deep=1, verbose=False, use_cache=True):
+
+        if use_cache and self._is_finite is not None:
+            return self._is_finite
+
+        if verbose:
+            print(f"Entered {deep} generation. Name: {self.name}")
         if deep > ORDER_MAX_DEEP:
             raise MaximumOrderDeepError(self.name)
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'is_one')
-
-        if self.is_one():
-            return True
-
         if checked is None:
             checked = {}
 
-        # check whether any of cyclic shifts of name was checked
-        # elements with same names up to cycle shifts are conjugate
-        # and therefore have same order
-        for i in range(len(self.name)):
-            tmp_name = self.name[i:] + self.name[:i]
-            if tmp_name in checked:
-                prev_power = checked[tmp_name]
-                return prev_power == cur_power
+        self._is_finite = True
 
-        checked[self.name] = cur_power
+        if not self.is_one():
 
-        # permutation.cyclic_form doesn't return cycles of unitary length
-        # (i.e. fixed points)
-        fixed_points = [[i] for i in range(self.cardinality)
-                                    if self.permutation(i) == i]
-        cycles = self.permutation.cyclic_form
-        orbits = fixed_points + cycles
+            # check whether any of cyclic shifts of name was checked
+            # elements with same names up to cycle shifts are conjugate
+            # and therefore have same order
+            for i in range(len(self.name)):
+                tmp_name = self.name[i:] + self.name[:i]
+                if tmp_name in checked:
+                    if verbose:
+                        print('found cycle:', self.name, tmp_name)
+                    prev_power = checked[tmp_name]
+                    return prev_power == cur_power
 
-        # FIXME rewrite using BFS
-        # always start from orbit of 0
-        for orbit in sorted(orbits):
-            power = len(orbit)
-            next_el = (self ** power)[orbit[0]]
-            if not next_el.is_finite(cur_power * power, checked, check_only_0,
-                                     deep+1):
-                return False
+            checked[self.name] = cur_power
 
-            if check_only_0:
-                break
+            # permutation.cyclic_form doesn't return cycles of unitary length
+            # (i.e. fixed points)
+            fixed_points = [[i] for i in range(self.cardinality)
+                                        if self.permutation(i) == i]
+            cycles = self.permutation.cyclic_form
+            orbits = fixed_points + cycles
 
-        del checked[self.name]
-        return True
+            # FIXME rewrite using BFS
+            # always start from orbit of 0
+            for orbit in sorted(orbits):
+                power = len(orbit)
+                next_el = (self ** power)[orbit[0]]
+                if not next_el.is_finite(cur_power=cur_power * power, checked=checked,
+                                         check_only_0=check_only_0,
+                                         deep=deep+1, verbose=verbose,
+                                         use_cache=use_cache):
+                    self._is_finite = False
+                    break
 
+                if check_only_0:
+                    break
+            del checked[self.name]
+
+        return self._is_finite
+
+    @_check_group
     def order_graph(self, graph, loops=False, as_tree=False):
-        if self.parent is None:
-            raise OutOfGroupError(self.name, 'is_one')
-
         added = defaultdict(int)
         checked = {}
         added[self.name] += 1
@@ -276,9 +289,7 @@ class AutomataGroupElement:
         self._order_graph(graph, checked, added, loops, as_tree)
 
     def _order_graph(self, graph, checked, added, loops, as_tree):
-
         cur_vertex = checked[self.name]
-
         if self.is_one():
             return
 
@@ -307,6 +318,20 @@ class AutomataGroupElement:
                 next_el._order_graph(graph, checked, added, loops, as_tree)
                 del checked[next_el.name]
 
+    # @check_group
+    # def _calc_tree(self):
+    #     if self.tree is not None:
+    #         return self.tree
+    #
+    #     if self.simplify:
+    #
+    #
+    #     children = []
+    #     for el in self:    # type: AutomataGroupElement
+    #         if el.name == self.name:
+    #             children.append()
+    #         children.append(el._calc_tree())
+
 
 class AutomataGroup:
 
@@ -316,28 +341,37 @@ class AutomataGroup:
     def all_instances(cls):
         return cls.__instances
 
-    def __new__(cls, name, *args, **kwargs):
-        if name in cls.__instances:
-            raise SingletonError(name)
-        else:
-            cls.__instances[name] = super(AutomataGroup, cls).__new__(cls)
-            return cls.__instances[name]
-
-    def __init__(self, name, gens: tp.List[AutomataGroupElement]):
+    def __new__(cls, name, gens: tp.List[AutomataGroupElement]):
         if not gens:
             raise ValueError("Gens should be a non-empty list of AutomataGroupElement-s")
 
-        self.name = name
-        self._defined_els = {}
-        self._defined_trees = {}
+        if name not in cls.__instances:
+            obj = super(AutomataGroup, cls).__new__(cls)
+            obj.name = name
+            obj._defined_els = {}
+            obj._defined_trees = {}
 
-        self.__gens = gens
-        self._size = gens[-1].permutation.size
-        self._e = AutomataGroupElement('e', Permutation(self._size), group=self)
-        self._defined_els['e'] = self._e
-        for el in self.__gens:
-            self._defined_els[el.name] = el
-            el.parent = self
+            obj.__gens = gens
+            obj._size = gens[-1].permutation.size
+            obj._e = AutomataGroupElement('e', Permutation(obj._size), group=obj)
+            obj._defined_els['e'] = obj._e
+            for el in obj.__gens:
+                obj._defined_els[el.name] = el
+                el.parent_group = obj
+            cls.__instances[name] = obj
+        else:
+            warnings.warn(f"There is already group with name {name}, so creation "
+                          f"of new such group just returns previous one and "
+                          f"doesn't change its attributes. "
+                          f"Use AutomataGroup.clear_group('{name}') before.")
+
+        return cls.__instances[name]
+
+    @classmethod
+    def clear_group(cls, name):
+        if name not in cls.__instances:
+            raise KeyError(f'There is no group with name {name}.')
+        del cls.__instances[name]
 
     def clear_memory(self):
         self._defined_els.clear()
@@ -350,6 +384,7 @@ class AutomataGroup:
             raise TypeError(f"el should be str, not {type(el)}")
         return el in self._defined_els
 
+    @property
     def one(self) -> AutomataGroupElement:
         return self._e
 
@@ -361,6 +396,9 @@ class AutomataGroup:
     def size(self):
         return self._size
 
+    # def create_tree_node(self, permutation, value=None, reverse=False,
+    #                      simplify=False):
+
     def __call__(self, el) -> AutomataGroupElement:
         if isinstance(el, str):
             if el not in self._defined_els:
@@ -371,7 +409,7 @@ class AutomataGroup:
                     res *= self._defined_els[prim_el]
                 self._defined_els[el] = res
             return self._defined_els[el]
-        elif isinstance(el, AutomataGroupElement):  #or isinstance(el, AutomataTreeNode):
+        elif isinstance(el, AutomataGroupElement):
             return self.__call__(el.name)
         else:
             raise TypeError(f"Not supported type: {type(el)}")
@@ -409,41 +447,31 @@ class AutomataGroup:
     @staticmethod
     def generate_H3():
         _a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]),
-                                  children=('e', 'e', 'a'), simplify=True)
+                                  children=('e', 'e', 'a'), is_atom=True)
         _b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]),
-                                  children=('e', 'b', 'e'), simplify=True)
+                                  children=('e', 'b', 'e'), is_atom=True)
         _c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
-                                  children=('c', 'e', 'e'), simplify=True)
+                                  children=('c', 'e', 'e'), is_atom=True)
         return AutomataGroup('H3', [_a, _b, _c])
 
     @staticmethod
     def generate_H4():
         _a = AutomataGroupElement('a', permutation=Permutation([0, 2, 1, 3]),
                                   children=('a', 'e', 'e', 'a'),
-                                  simplify=True)
+                                  is_atom=True)
         _b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0, 3]),
                                   children=('e', 'b', 'e', 'b'),
-                                  simplify=True)
+                                  is_atom=True)
         _c = AutomataGroupElement('c', permutation=Permutation([1, 0, 2, 3]),
                                   children=('e', 'e', 'c', 'c'),
-                                  simplify=True)
+                                  is_atom=True)
         _d = AutomataGroupElement('d', permutation=Permutation([0, 1, 3, 2]),
                                   children=('d', 'd', 'e', 'e'),
-                                  simplify=True)
+                                  is_atom=True)
         _f = AutomataGroupElement('f', permutation=Permutation([0, 3, 2, 1]),
                                   children=('f', 'e', 'f', 'e'),
-                                  simplify=True)
+                                  is_atom=True)
         _g = AutomataGroupElement('g', permutation=Permutation([3, 1, 2, 0]),
                                   children=('e', 'g', 'g', 'e'),
-                                  simplify=True)
+                                  is_atom=True)
         return AutomataGroup("H4", [_a, _b, _c, _d, _f, _g])
-
-
-if __name__ == '__main__':
-    H4 = AutomataGroup.generate_H4()
-    a, b, c, d, f, g = H4.gens  # type: AutomataGroupElement
-    print(a.is_finite())
-    print(a.is_one())
-    print((g * c * a * f * b * g * c * a).is_finite())
-
-    print((a * a).is_one())
