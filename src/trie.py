@@ -10,12 +10,35 @@ from collections import deque
 
 
 class Trie:
+    """ Implementation of Trie a.k.a prefix tree as a recursive dictionary.
+
+    >>> trie = Trie("word", "word2", "word3", "w", "wo", "next")
+    >>> print(trie)
+    Trie({'w': {'o': {'r': {'d': {'_end_': '_end_', '2': {'_end_': '_end_'}, '3': {'_end_': '_end_'}}}, '_end_': '_end_'}, '_end_': '_end_'}, 'n': {'e': {'x': {'t': {'_end_': '_end_'}}}}})
+    >>> 'word' in trie
+    True
+    >>> 'word123' in trie
+    False
+    >>> 'wor' in trie
+    False
+    >>> trie.add('word1231')
+    >>> 'word1231' in trie
+    True
+    >>> trie.remove('w')
+    >>> 'w' in trie
+    False
+    >>> list(trie)
+    ['word', 'word2', 'word3', 'word1231', 'wo', 'next']
+    >>> trie.max_prefix('word123next')
+    ('word', '123next')
+    """
 
     _end = '_end_'
 
     def __init__(self, *words):
         root = dict()
         self._root = root
+        self._size = 0
         for word in words:
             self.add(word)
 
@@ -31,7 +54,9 @@ class Trie:
         cur_dict = self._root
         for letter in word:
             cur_dict = cur_dict.setdefault(letter, {})
-        cur_dict[self._end] = self._end
+        if self._end not in cur_dict:
+            cur_dict[self._end] = self._end
+            self._size += 1
 
     def max_prefix(self, string):
         cur_dict = self._root
@@ -55,17 +80,13 @@ class Trie:
             raise KeyError(f"There is no element '{word}' in given trie.")
         else:
             del cur_dict[self._end]
-
-    def _iter(self, root):
-        for letter in root:
-            if letter == self._end:
-                yield ''
-                continue
-            for tail in self._iter(root[letter]):
-                yield letter + tail
+            self._size -= 1
 
     def __str__(self):
         return f'Trie({self._root})'
+
+    def __len__(self):
+        return self._size
 
     def __iter__(self):
 

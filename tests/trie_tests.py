@@ -12,8 +12,8 @@ import random
 from string import ascii_lowercase, ascii_uppercase
 
 SPACE = ascii_lowercase + ascii_uppercase
-TESTS_AMOUNT = 100
-MAX_LEN = 10000
+TESTS_AMOUNT = 1000
+MAX_LEN = 1000
 
 
 class MyTestCase(unittest.TestCase):
@@ -62,6 +62,41 @@ class MyTestCase(unittest.TestCase):
                     required_noise = string[len(word):]
                     break
             self.assertEqual((required_word, required_noise), test.max_prefix(string))
+
+    def test_remove(self):
+        all_words = set()
+        test = Trie()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            all_words.add(word)
+            test.add(word)
+        for _ in range(random.randint(1, len(all_words))):
+            word = random.choice(list(all_words))
+            all_words.remove(word)
+            test.remove(word)
+            self.assertFalse(word in test)
+
+        res_words = set(test)
+        self.assertEqual(all_words, res_words)
+
+    def test_len(self):
+        all_words = set()
+        test = Trie()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            all_words.add(word)
+            test.add(word)
+
+        self.assertEqual(len(all_words), len(test))
+        for _ in range(random.randint(1, len(all_words))):
+            word = random.choice(list(all_words))
+            all_words.remove(word)
+            test.remove(word)
+            self.assertFalse(word in test)
+
+        self.assertEqual(len(all_words), len(test))
 
 
 if __name__ == '__main__':
