@@ -18,7 +18,6 @@ class Tree:
     def __init__(self, value, children=()):
         self.value = value
         self.children = deque()      # list of children
-        self.parent = None
 
         # vertex horizontal offset relative to zero (the most left point)
         # it's just for plotting
@@ -54,7 +53,6 @@ class Tree:
             self.children.append(_child)
         else:
             self.children.insert(position, _child)
-        _child.parent = self
         return _child
 
     def height(self):
@@ -77,12 +75,10 @@ class Tree:
         :param child: Tree or value of tree
         """
         if isinstance(child, Tree):
-            child.parent = None           # FIXME here might be problems
-            self.children.remove(child)   #  Tree should have method __eq__
+            self.children.remove(child)
         else:
             for i, el in enumerate(self.children):
                 if el.value == child:
-                    el.parent = None
                     del self.children[i]
                     break
 
@@ -230,11 +226,9 @@ class Tree:
             value = Tree(value)
 
         self.children[key] = value
-        value.parent = self
 
     def __delitem__(self, key):
         child = self.children[key]  # type: Tree
-        child.parent = None
         del self.children[key]
 
 
@@ -251,9 +245,9 @@ if __name__ == '__main__':
     test_tree.add_child('d')
     test_tree.children[-1].add_child('x')
     test_tree.children[-1].add_child('x')
-    tmp = test_tree.children[-1].add_child('x')
-    tmp.add_child('x')
-    tmp.add_child('x')
+    test_tmp = test_tree.children[-1].add_child('x')
+    test_tmp.add_child('x')
+    test_tmp.add_child('x')
 
     test_tree.add_child('y')
 

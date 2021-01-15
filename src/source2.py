@@ -25,6 +25,7 @@ MEMORY_SIZE = 1 * 1024 * 1024 * 1024
 
 process = psutil.Process(os.getpid())
 
+
 def lcm(x, y):
     if x == float('inf') or y == float('inf'):
         return float('inf')
@@ -275,17 +276,14 @@ class AutomataTreeNode(Tree):
             self.children.append(_child)
         else:
             self.children.insert(position, _child)
-        _child.parent = self
         return _child
 
     def remove(self, child):
         if isinstance(child, AutomataTreeNode):
-            child.parent = None
             self.children.remove(child)
         else:
             for i, el in enumerate(self.children):
                 if el.value == child:
-                    el.parent = None
                     del self.children[i]
                     break
 
@@ -569,15 +567,15 @@ class AutomataGroupElement:
     #     orbits = self.permutation.cyclic_form
     #     for orbit in orbits:
 
-    def is_finite2_0(self, graph, path='', checked=None):
-        if checked is None:          # TODO: replace set of names with
-            checked = set()          #  structure of reduced names
-
-        checked.add(self.name)
-        orbits = self.permutation.cyclic_form
-        for orbit in orbits:
-            next_index = orbit[0]
-            next_el = self ** len(orbit)
+    # def is_finite2_0(self, graph, path='', checked=None):
+    #     if checked is None:          # TODO: replace set of names with
+    #         checked = set()          #  structure of reduced names
+    #
+    #     checked.add(self.name)
+    #     orbits = self.permutation.cyclic_form
+    #     for orbit in orbits:
+    #         next_index = orbit[0]
+    #         next_el = self ** len(orbit)
 
     def is_finite(self):
         if self._calc_order is not None:
@@ -667,8 +665,3 @@ def _generate_H4():
     g = AutomataGroupElement('g', permutation=Permutation([3, 1, 2, 0]),
                              children=(e, reverse_node(), reverse_node(), e),
                              simplify=True)
-
-
-if __name__ == '__main__':
-    _generate_H4()
-    ((a * b * c * a * c * b * d * d)**3).is_trivial()
