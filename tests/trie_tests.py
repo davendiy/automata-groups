@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 import unittest
-from src.trie import Trie
+from src.trie import Trie, TriedDict
 import random
 from string import ascii_lowercase, ascii_uppercase
 
@@ -16,7 +16,7 @@ TESTS_AMOUNT = 1000
 MAX_LEN = 1000
 
 
-class MyTestCase(unittest.TestCase):
+class TestsTrie(unittest.TestCase):
 
     def test_add(self):
         all_words = set()
@@ -97,6 +97,52 @@ class MyTestCase(unittest.TestCase):
             self.assertFalse(word in test)
 
         self.assertEqual(len(all_words), len(test))
+
+class TestsTriedDict(unittest.TestCase):
+
+    def test_set(self):
+        all_words = {}
+        test = TriedDict()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            value = random.random()
+            all_words[word] = value
+            test[word] = value
+
+        for word in all_words:
+            self.assertTrue(word in test)
+
+    def test_get(self):
+        all_words = {}
+        test = TriedDict()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            value = random.random()
+            all_words[word] = value
+            test[word] = value
+
+        for word in all_words:
+            self.assertEqual(all_words[word], test[word])
+
+    def test_del(self):
+        all_words = {}
+        test = TriedDict()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            value = random.random()
+            all_words[word] = value
+            test[word] = value
+        for _ in range(random.randint(1, len(all_words))):
+            word = random.choice(list(all_words))
+            del all_words[word]
+            test.remove(word)
+            self.assertFalse(word in test)
+
+        res_words = set(test)
+        self.assertEqual(all_words, res_words)
 
 
 if __name__ == '__main__':
