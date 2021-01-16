@@ -91,7 +91,20 @@ class MyTestCase(unittest.TestCase):
         self.assertFalse(H4('gcafbgca').is_finite())
 
     def test_order(self):
-        pass
+        H3 = AutomataGroup.generate_H3()
+        H4 = AutomataGroup.generate_H4()
+
+        for el in permute(H3.alphabet, repeat=5):
+            el = H3(''.join(el))
+            if el.is_finite():
+                pow_el = el ** el.order()
+                self.assertTrue(pow_el.is_one())
+
+        for el in permute(H4.alphabet, repeat=3):
+            el = H4(''.join(el))
+            if el.is_finite():
+                pow_el = el ** el.order()
+                self.assertTrue(pow_el.is_one())
 
     def test_is_finite2(self):
         H3 = AutomataGroup.generate_H3()
@@ -100,15 +113,15 @@ class MyTestCase(unittest.TestCase):
         AutomataGroupElement.disable_cache()
 
         for el in H3.gens + H4.gens:   # type: AutomataGroupElement
-            self.assertEqual(el.is_finite(),
-                             el._is_finite2())
-        self.assertEqual(H4('gcafbgca').is_finite(),
-                         H4('gcafbgca')._is_finite2())
+            self.assertEqual(el.is_finite(use_dfs=True),
+                             el.is_finite())
+        self.assertEqual(H4('gcafbgca').is_finite(use_dfs=True),
+                         H4('gcafbgca').is_finite())
 
         for el in permute(H3.alphabet, repeat=6):
             el = H3(''.join(el))
-            self.assertEqual(el.is_finite(),
-                             el._is_finite2())
+            self.assertEqual(el.is_finite(use_dfs=True),
+                             el.is_finite())
 
 
 if __name__ == '__main__':

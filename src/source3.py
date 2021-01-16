@@ -400,11 +400,11 @@ class AutomataGroupElement:
 
     @classmethod
     def enable_cache(cls):
-        cls.__use_cache = True
+        cls._use_cache = True
 
     @classmethod
     def disable_cache(cls):
-        cls.__use_cache = False
+        cls._use_cache = False
 
     def __len__(self):
         if self.name == 'e':
@@ -532,9 +532,15 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
-    def is_finite(self, cur_power=1, checked=None,
-                  check_only_0=False, deep=1,
-                  verbose=False):
+    def is_finite(self, check_only_0=False, verbose=False, use_dfs=False):
+        if use_dfs:
+            return self._is_finite_dfs(check_only_0=check_only_0, verbose=verbose)
+        else:
+            return self._is_finite_bfs(check_only_0=check_only_0, verbose=verbose)
+
+    def _is_finite_dfs(self, cur_power=1, checked=None,
+                       check_only_0=False, deep=1,
+                       verbose=False):
         if verbose:
             print(f"Entered {deep} generation. Name: {self.name}")
         if deep > self._order_max_deep:
@@ -560,21 +566,15 @@ class AutomataGroupElement:
 
             checked[self.name] = cur_power
 
-            # permutation.cyclic_form doesn't return cycles of unitary length
-            # (i.e. fixed points)
-            fixed_points = [[i] for i in range(self.cardinality)
-                                        if self.permutation(i) == i]
-            cycles = self.permutation.cyclic_form
-            orbits = fixed_points + cycles
-
-            # FIXME rewrite using BFS
+            orbits = self._get_orbits(self.permutation)
             # always start from orbit of 0
             for orbit in sorted(orbits):
                 power = len(orbit)
                 next_el = (self ** power)[orbit[0]]
-                if not next_el.is_finite(cur_power=cur_power * power, checked=checked,
-                                         check_only_0=check_only_0,
-                                         deep=deep+1, verbose=verbose):
+                if not next_el._is_finite_dfs(cur_power=cur_power * power,
+                                              checked=checked,
+                                              check_only_0=check_only_0,
+                                              deep=deep+1, verbose=verbose):
                     self._is_finite = False
                     break
 
@@ -584,16 +584,16 @@ class AutomataGroupElement:
 
         return self._is_finite
 
-    @_Decorators.check_group
-    @_Decorators.cached('_is_finite')
-    def _is_finite2(self, check_only_0=False,
-                    verbose=False):
-
+    def _is_finite_bfs(self, check_only_0=False,
+                       verbose=False):
         queue = deque()
         queue.append((self, {}, 1, 1))
         while queue:
             el, checked, cur_power, deep \
                 = queue.popleft()  # type: AutomataGroupElement, dict, int, int
+
+            if verbose:
+                print(f'Generation: {deep}, name: {el.name}')
             if el.is_one():
                 continue
 
@@ -621,11 +621,7 @@ class AutomataGroupElement:
 
             checked[el.name] = cur_power
 
-            fixed_points = [[i] for i in range(el.cardinality)
-                            if el.permutation(i) == i]
-            cycles = el.permutation.cyclic_form
-            orbits = fixed_points + cycles
-
+            orbits = self._get_orbits(el.permutation)
             for orbit in sorted(orbits):
                 power = len(orbit)
                 next_el = (el ** power)[orbit[0]]
@@ -634,6 +630,13 @@ class AutomataGroupElement:
                     break
 
         return True
+
+    @staticmethod
+    def _get_orbits(permutation):
+        fixed_points = [[i] for i in range(permutation.size)
+                        if permutation(i) == i]
+        cycles = permutation.cyclic_form
+        return fixed_points + cycles
 
     @staticmethod
     def _check_cycle_shifts(el, checked, verbose):
@@ -661,10 +664,7 @@ class AutomataGroupElement:
         if self.is_one():
             return
 
-        fixed_points = [[i] for i in range(self.cardinality)
-                                    if self.permutation(i) == i]
-        cycles = self.permutation.cyclic_form
-        orbits = fixed_points + cycles
+        orbits = self._get_orbits(self.permutation)
         for orbit in orbits:
             power = len(orbit)
             next_el = (self ** power)[orbit[0]]
@@ -709,8 +709,8 @@ class AutomataGroupElement:
         self.tree.draw(start_x=start_x, start_y=start_y,
                        scale=scale, radius=radius,
                        fontsize=fontsize, y_scale_mul=y_scale_mul,
-                       save_filename=save_filename, show_full=show_full, lbn=lbn,
-                       show_names=show_names)
+                       save_filename=save_filename, show_full=show_full,
+                       lbn=lbn, show_names=show_names)
 
 
 class AutomataGroup:
