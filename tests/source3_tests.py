@@ -97,16 +97,18 @@ class MyTestCase(unittest.TestCase):
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
 
+        AutomataGroupElement.disable_cache()
+
         for el in H3.gens + H4.gens:   # type: AutomataGroupElement
-            self.assertEqual(el.is_finite(use_cache=False),
-                             el._is_finite2(use_cache=False))
-        self.assertEqual(H4('gcafbgca').is_finite(use_cache=False),
-                         H4('gcafbgca')._is_finite2(use_cache=False))
+            self.assertEqual(el.is_finite(),
+                             el._is_finite2())
+        self.assertEqual(H4('gcafbgca').is_finite(),
+                         H4('gcafbgca')._is_finite2())
 
         for el in permute(H3.alphabet, repeat=6):
             el = H3(''.join(el))
-            self.assertEqual(el.is_finite(use_cache=False),
-                             el._is_finite2(use_cache=False))
+            self.assertEqual(el.is_finite(),
+                             el._is_finite2())
 
 
 if __name__ == '__main__':

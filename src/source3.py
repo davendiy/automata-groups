@@ -330,19 +330,41 @@ class AutomataTreeNode(Tree):
         return res
 
 
-def _check_group(method):
-    @wraps(method)
-    def res_method(self, *args, **kwargs):
-        if self.parent_group is None:
-            raise OutOfGroupError(self.name, method.__name__)
-        return method(self, *args, **kwargs)
+class _Decorators:
 
-    return res_method
+    @staticmethod
+    def check_group(method):
+        @wraps(method)
+        def res_method(self, *args, **kwargs):
+            if self.parent_group is None:
+                raise OutOfGroupError(self.name, method.__name__)
+            return method(self, *args, **kwargs)
+
+        return res_method
+
+    @staticmethod
+    def cached(attr_name):
+
+        def _cached(method):
+
+            @wraps(method)
+            def res_method(self, *args, **kwargs):
+                if self._use_cache and getattr(self, attr_name) is not None:
+                    return getattr(self, attr_name)
+                else:
+                    res = method(self, *args, **kwargs)
+                    setattr(self, attr_name, res)
+                    return res
+
+            return res_method
+
+        return _cached
 
 
 class AutomataGroupElement:
 
     _order_max_deep = 30
+    _use_cache = True
 
     def __init__(self, name, permutation,
                  children=None, is_atom=False, group=None):
@@ -376,6 +398,14 @@ class AutomataGroupElement:
 
         cls._order_max_deep = value
 
+    @classmethod
+    def enable_cache(cls):
+        cls.__use_cache = True
+
+    @classmethod
+    def disable_cache(cls):
+        cls.__use_cache = False
+
     def __len__(self):
         if self.name == 'e':
             return 0
@@ -408,12 +438,12 @@ class AutomataGroupElement:
         self._order = None
         self._is_finite = None
 
-    @_check_group
+    @_Decorators.check_group
     def __iter__(self):
         for el in self.children:
             yield self.parent_group(el)
 
-    @_check_group
+    @_Decorators.check_group
     def __getitem__(self, item):
         if isinstance(item, int):
             return self.parent_group(self.children[item])
@@ -431,7 +461,7 @@ class AutomataGroupElement:
     def __str__(self):
         return self.__repr__()
 
-    @_check_group
+    @_Decorators.check_group
     def __mul__(self, other):
         if not isinstance(other, AutomataGroupElement):
             raise TypeError(f"Multiplier should be instance of AutomataGroupElement, not {type(other)}")
@@ -439,7 +469,7 @@ class AutomataGroupElement:
             raise DifferentGroupsError(self.parent_group, other.parent_group)
         return self.parent_group.multiply(self, other)
 
-    @_check_group
+    @_Decorators.check_group
     def __pow__(self, power):
         if not isinstance(power, int):
             raise TypeError(f"Power type should be int, not {type(power)}")
@@ -460,16 +490,14 @@ class AutomataGroupElement:
             tmp *= tmp
         return res
 
-    @_check_group
-    def is_one(self, use_cache=True):
-
-        if use_cache and self._is_one is not None:
-            return self._is_one
+    @_Decorators.check_group
+    @_Decorators.cached('_is_one')
+    def is_one(self):
 
         if self.name == 'e':
-            self._is_one = True
+            res = True
         elif self.permutation.order() != 1:
-            self._is_one = False
+            res = False
         else:
             queue = set()
             queue.update(el for el in self.children if el != self.name)
@@ -482,35 +510,31 @@ class AutomataGroupElement:
                     res = False
                     break
                 queue.update(el for el in child.children if el != child.name)
-            self._is_one = res
-        return self._is_one
 
-    @_check_group
-    def order(self, check_finite=True, use_cache=True):
-        if use_cache and self._order is not None:
-            return self._order
+        return res
+
+    @_Decorators.check_group
+    @_Decorators.cached('_order')
+    def order(self, check_finite=True):
 
         if self.is_one():
-            self._order = 1
+            res = 1
         elif check_finite and not self.is_finite():
-            self._order = float('inf')
+            res = float('inf')
         else:
             power = int(self.permutation.order())
             next_el = self ** power
             res = 1
             for el in next_el:    # type: AutomataGroupElement
-                res = lcm(res, el.order(check_finite=False, use_cache=use_cache))
-            self._order = res * power
-        return self._order
+                res = lcm(res, el.order(check_finite=False))
+            res *= power
+        return res
 
-    @_check_group
+    @_Decorators.check_group
+    @_Decorators.cached('_is_finite')
     def is_finite(self, cur_power=1, checked=None,
                   check_only_0=False, deep=1,
-                  verbose=False, use_cache=True):
-
-        if use_cache and self._is_finite is not None:
-            return self._is_finite
-
+                  verbose=False):
         if verbose:
             print(f"Entered {deep} generation. Name: {self.name}")
         if deep > self._order_max_deep:
@@ -550,8 +574,7 @@ class AutomataGroupElement:
                 next_el = (self ** power)[orbit[0]]
                 if not next_el.is_finite(cur_power=cur_power * power, checked=checked,
                                          check_only_0=check_only_0,
-                                         deep=deep+1, verbose=verbose,
-                                         use_cache=use_cache):
+                                         deep=deep+1, verbose=verbose):
                     self._is_finite = False
                     break
 
@@ -561,11 +584,10 @@ class AutomataGroupElement:
 
         return self._is_finite
 
+    @_Decorators.check_group
+    @_Decorators.cached('_is_finite')
     def _is_finite2(self, check_only_0=False,
-                    verbose=False, use_cache=True):
-
-        if use_cache and self._is_finite is not None:
-            return self._is_finite
+                    verbose=False):
 
         queue = deque()
         queue.append((self, {}, 1, 1))
@@ -586,14 +608,14 @@ class AutomataGroupElement:
             # if we found cycle of non-unitary length it means that
             # all of predecessors are infinite elements
             if prev_power and prev_power != cur_power:
-                self._is_finite = False
+                res = False
                 for prev in checked:
                     prev = self.parent_group(prev)
                     if prev._is_finite is None:
                         prev._is_finite = False
                     else:
                         assert not prev._is_finite
-                return self._is_finite
+                return res
             elif prev_power:
                 continue
 
@@ -610,8 +632,8 @@ class AutomataGroupElement:
                 queue.append((next_el, checked.copy(), cur_power * power, deep + 1))
                 if check_only_0:
                     break
-        self._is_finite = True
-        return self._is_finite
+
+        return True
 
     @staticmethod
     def _check_cycle_shifts(el, checked, verbose):
@@ -624,7 +646,7 @@ class AutomataGroupElement:
                 return checked[tmp_name]
         return 0
 
-    @_check_group
+    @_Decorators.check_group
     def order_graph(self, graph, loops=False, as_tree=False):
         added = defaultdict(int)
         checked = {}
@@ -664,7 +686,7 @@ class AutomataGroupElement:
                 next_el._order_graph(graph, checked, added, loops, as_tree)
                 del checked[next_el.name]
 
-    @_check_group
+    @_Decorators.check_group
     def _calc_tree(self):
         if self._tree is not None:
             return self._tree
