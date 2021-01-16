@@ -9,14 +9,17 @@
 
 
 from .permutation import Permutation
-from .tools import lcm
+from .tools import lcm, reduce_repetitions, id_func
+from .trees import Tree
+from .trie import TriedDict
 
-from functools import wraps
+import matplotlib.pyplot as plt
+from functools import wraps, partial
 import warnings
 import typing as tp
-from collections import defaultdict
+from collections import defaultdict, deque
+from math import log
 
-ORDER_MAX_DEEP = 30
 REVERSE_VALUE = '@'
 
 
@@ -63,6 +66,270 @@ class MaximumOrderDeepError(RecursionError):
         return f'Reached maximum deep while finding order for {self.name}'
 
 
+class AutomataTreeNode(Tree):
+
+    # color of the vertex depends on its permutation
+    # could be changed into 'unique color for each permutation'
+    # now color is unique for each possible order of permutation
+    # _colors = {
+    #     '(2)': 'y',
+    #     '(0 1 2)': 'r',
+    #     '(0 2 1)': 'r',
+    #     '(2)(0 1)': 'b'
+    #     '(0 2)': 'b',
+    #     '(1 2)': 'b'
+    # }
+    #
+
+    _colors = {
+        1: 'y',
+        2: 'b',
+        3: 'r',
+        4: 'c',
+        5: 'm',
+        6: 'g'
+    }
+
+    # corresponding labels for colors
+    _labels = {
+        'b': 'permutation of order 2',
+        'r': 'permutation of order 3',
+        'c': 'permutation of order 4',
+        'm': 'permutation of order 5',
+        'g': 'permutation of order 6',
+        'y': 'trivial permutation',
+        'k': 'reverse node'
+    }
+
+    def __init__(self, permutation=None, value=None, reverse=False,
+                 simplify=False):
+        """ Tree for element of Automata group.
+
+        :param permutation: permutation of node
+        :param value: name of element (will be printed on picture)
+        :param reverse: True if this node means the recursive callback of
+                        the parent
+        :param simplify: True if it could be drawn as point with name
+                         (e.g. for e, a, b, c)
+        """
+        self.permutation = permutation
+        self.reverse = reverse
+        self.simplify = simplify
+
+        self._size = None
+
+        if reverse:
+            value = '@'
+        elif value is None:
+            value = str(permutation)
+        super().__init__(value)
+
+    @property
+    def name(self):
+        return self.value
+
+    def size(self) -> int:
+        if self.reverse or self.value == 'e':
+            return 0
+        if self._size is None:
+            self._size = len(self.name)
+            for el in self.children:      # type: AutomataTreeNode
+                self._size += el.size()
+        return self._size
+
+    def get_coords(self, start_x, start_y, scale, deep=0, show_full=False,
+                   y_scale_mul=3):
+        """ Recursively (DFS) generates sequence of coordinates of vertices for
+        drawing the edges.
+
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param deep: auxiliary parameter - number of self's generation:param show_full:
+        :param y_scale_mul: multiplier of y-axes scale
+                            It's used for bigger step between generations
+        :param show_full: False if you want elements with attribute 'simplify'
+                          to draw as just one node with name.
+        :yield: (x, y) - coordinates on the plane
+        """
+        x_coord = start_x + self._offset * scale
+        y_coord = start_y - deep * scale * y_scale_mul
+        yield x_coord, y_coord
+
+        if not self.simplify or show_full:
+            for child in self.children:  # type: AutomataTreeNode
+                for coords in child.get_coords(start_x, start_y, scale,
+                                               deep+1, show_full=show_full,
+                                               y_scale_mul=y_scale_mul):
+                    yield coords
+                yield x_coord, y_coord
+
+    def draw(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False,
+             show_names=True):
+        """ Draws the tree in matplotlib.
+
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param radius: radius of vertices
+        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
+        :param save_filename: name of file, where it should be save.
+                              Default == '', means that the picture won't be saved
+        :param show_full: False if you want elements with attribute 'simplify'
+                          to draw as just one node with name.
+        :param y_scale_mul: multiplier of y-axes scale
+                            It's used for bigger step between generations
+        :param lbn: leaves belong names, True if you want to print names
+                    of leaves belong them
+        :param show_names: True if you want to plot the names of vertices
+        """
+        fig, ax = plt.subplots(figsize=(20, 20))
+        # ax = fig.add_subplot(111)
+
+        self.make_offsets()    # preparing
+
+        # --------------------------draw edges----------------------------------
+        x_coords = []
+        y_coords = []
+        for x, y in self.get_coords(start_x, start_y, scale, show_full=show_full,
+                                    y_scale_mul=y_scale_mul):
+            x_coords.append(x)
+            y_coords.append(y)
+
+        # fontsize measured in pixels (unlike the radius and another distances
+        # on plane), so we need to change its value in order to save the
+        # size when matplotlib use autoscale for picture
+        fontsize = fontsize / (log(self.vert_amount()))
+        ax.plot(x_coords, y_coords, linewidth=0.5)
+
+        # ------------------------draw vertices---------------------------------
+        used_colors = set()    # for legend
+        self._draw(ax, start_x, start_y, scale, radius, fontsize, show_full=show_full,
+                   y_scale_mul=y_scale_mul, used_colors=used_colors, lbn=lbn,
+                   show_names=show_names)
+
+        # auxiliary circles with labels
+        # used for legend
+        for color in used_colors:
+            circle = plt.Circle((0, 0), radius=radius/100,
+                                color=color, label=self._labels[color])
+            ax.add_patch(circle)
+
+        # some kind of deleting of the previous circles
+        circle = plt.Circle((0, 0), radius=radius/100, color='w')
+        ax.add_patch(circle)
+
+        ax.axis('off')
+        ax.set_aspect('equal')
+        ax.autoscale_view()
+        ax.legend()
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), shadow=True, ncol=2)
+        fig.show()
+        if save_filename:
+            fig.savefig(save_filename)
+
+    def _draw(self, ax, start_x, start_y, scale, radius,
+              fontsize, deep=0, show_full=False, y_scale_mul=3, used_colors=None,
+              lbn=False, show_names=True):
+        """ Auxiliary recursive (DFS) function for drawing the vertices of tree.
+
+        :param ax: matplotlib object for plotting
+        :param start_x: x coordinate of the start position on the plane
+        :param start_y: y coordinate of the start position on the plane
+        :param scale: length of one step of offset.
+                      Offset is measure of vertices' displacement relative to
+                      left upper corner. Distance between 2 generation == one
+                      step of offset.
+        :param radius: radius of vertices
+        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
+        :param show_full: False if you want elements with attribute 'simplify'
+                          to draw as just one node with name.
+        :param y_scale_mul: multiplier of y-axes scale
+                            it's used for bigger step between generations
+        :param used_colors: auxiliary set with all the orders of permutations that
+                            were plotted on the plane. It's used for pointing
+                            at the legend just colors that we used.
+        :param lbn: leaves belong names, True if you want to print names
+                    of leaves belong them
+        """
+
+        if used_colors is None:
+            used_colors = set()
+
+        x_coord = self._offset * scale + start_x
+        y_coord = start_y - deep * scale * y_scale_mul
+
+        # plots circles for nodes with different permutations
+        # using different colors
+        if not self.reverse:
+            color = AutomataTreeNode._colors[self.permutation.order()]
+            circle = plt.Circle((x_coord, y_coord), radius=radius, color=color)
+            used_colors.add(color)
+        else:
+            # plots reverse nodes using black color
+            circle = plt.Circle((x_coord, y_coord), radius=radius, color='k')
+            used_colors.add('k')
+        ax.add_patch(circle)
+
+        if show_names:
+            # bias for printing the name above or belong the node
+            # belong is used just for
+            if (not self.children or (self.simplify and not show_full)) and lbn:
+                bias = -2
+            else:
+                bias = 1
+            ax.annotate(str(self.value), xy=(x_coord, y_coord + radius * bias),
+                        xytext=(-fontsize * (len(str(self.value))//3), 2 * bias),
+                        textcoords='offset pixels',
+                        fontsize=fontsize)
+
+        # continue plotting of children if given parameters allow
+        if not self.simplify or show_full:
+            for child in self.children:       # type: AutomataTreeNode
+                child._draw(ax, start_x, start_y, scale, radius, fontsize,
+                            deep + 1, show_full, y_scale_mul, used_colors, lbn,
+                            show_names=show_names)
+
+    def add_child(self, child, position=None):
+        if isinstance(child, AutomataTreeNode):
+            _child = child.copy()       # add only copies of the given trees
+        else:                           # in order to avoid cycles
+            raise NotImplementedError()
+        if position is None:
+            self.children.append(_child)
+        else:
+            self.children.insert(position, _child)
+        return _child
+
+    def remove(self, child):
+        if isinstance(child, AutomataTreeNode):
+            self.children.remove(child)
+        else:
+            for i, el in enumerate(self.children):
+                if el.value == child:
+                    del self.children[i]
+                    break
+
+    def copy(self):
+        return self.__copy__()
+
+    def __copy__(self):
+        res = AutomataTreeNode(self.permutation, self.value,
+                               self.reverse, self.simplify)
+        res._size = self._size
+
+        for child in self.children:   # type: AutomataTreeNode
+            res.add_child(child)
+        return res
+
+
 def _check_group(method):
     @wraps(method)
     def res_method(self, *args, **kwargs):
@@ -74,6 +341,8 @@ def _check_group(method):
 
 
 class AutomataGroupElement:
+
+    _order_max_deep = 30
 
     def __init__(self, name, permutation,
                  children=None, is_atom=False, group=None):
@@ -96,6 +365,17 @@ class AutomataGroupElement:
         self._order = None
         self._is_finite = None
 
+    @classmethod
+    def set_order_max_deep(cls, value):
+
+        if not isinstance(value, int):
+            raise TypeError(f"Max_deep should be int, not {type(value)}")
+
+        if value < 1:
+            raise ValueError(f'Max_deep should be greater than 1')
+
+        cls._order_max_deep = value
+
     def __len__(self):
         if self.name == 'e':
             return 0
@@ -104,6 +384,7 @@ class AutomataGroupElement:
 
     @property
     def tree(self):
+        self._calc_tree()
         return self._tree
 
     @property
@@ -153,7 +434,7 @@ class AutomataGroupElement:
     @_check_group
     def __mul__(self, other):
         if not isinstance(other, AutomataGroupElement):
-            raise TypeError("Bad type for multiplier.")
+            raise TypeError(f"Multiplier should be instance of AutomataGroupElement, not {type(other)}")
         if self.parent_group != other.parent_group:
             raise DifferentGroupsError(self.parent_group, other.parent_group)
         return self.parent_group.multiply(self, other)
@@ -224,14 +505,15 @@ class AutomataGroupElement:
 
     @_check_group
     def is_finite(self, cur_power=1, checked=None,
-                        check_only_0=False, deep=1, verbose=False, use_cache=True):
+                  check_only_0=False, deep=1,
+                  verbose=False, use_cache=True):
 
         if use_cache and self._is_finite is not None:
             return self._is_finite
 
         if verbose:
             print(f"Entered {deep} generation. Name: {self.name}")
-        if deep > ORDER_MAX_DEEP:
+        if deep > self._order_max_deep:
             raise MaximumOrderDeepError(self.name)
         if checked is None:
             checked = {}
@@ -249,7 +531,8 @@ class AutomataGroupElement:
                     if verbose:
                         print('found cycle:', self.name, tmp_name)
                     prev_power = checked[tmp_name]
-                    return prev_power == cur_power
+                    self._is_finite = prev_power == cur_power
+                    return self._is_finite
 
             checked[self.name] = cur_power
 
@@ -277,6 +560,69 @@ class AutomataGroupElement:
             del checked[self.name]
 
         return self._is_finite
+
+    def _is_finite2(self, check_only_0=False,
+                    verbose=False, use_cache=True):
+
+        if use_cache and self._is_finite is not None:
+            return self._is_finite
+
+        queue = deque()
+        queue.append((self, {}, 1, 1))
+        while queue:
+            el, checked, cur_power, deep \
+                = queue.popleft()  # type: AutomataGroupElement, dict, int, int
+            if el.is_one():
+                continue
+
+            if deep > self._order_max_deep:
+                raise MaximumOrderDeepError(self.name)
+
+            # check whether any of cyclic shifts of name was checked
+            # elements with same names up to cycle shifts are conjugate
+            # and therefore have same order
+            prev_power = self._check_cycle_shifts(el, checked, verbose)
+
+            # if we found cycle of non-unitary length it means that
+            # all of predecessors are infinite elements
+            if prev_power and prev_power != cur_power:
+                self._is_finite = False
+                for prev in checked:
+                    prev = self.parent_group(prev)
+                    if prev._is_finite is None:
+                        prev._is_finite = False
+                    else:
+                        assert not prev._is_finite
+                return self._is_finite
+            elif prev_power:
+                continue
+
+            checked[el.name] = cur_power
+
+            fixed_points = [[i] for i in range(el.cardinality)
+                            if el.permutation(i) == i]
+            cycles = el.permutation.cyclic_form
+            orbits = fixed_points + cycles
+
+            for orbit in sorted(orbits):
+                power = len(orbit)
+                next_el = (el ** power)[orbit[0]]
+                queue.append((next_el, checked.copy(), cur_power * power, deep + 1))
+                if check_only_0:
+                    break
+        self._is_finite = True
+        return self._is_finite
+
+    @staticmethod
+    def _check_cycle_shifts(el, checked, verbose):
+
+        for i in range(len(el.name)):
+            tmp_name = el.name[i:] + el.name[:i]
+            if tmp_name in checked:
+                if verbose:
+                    print('found cycle:', el.name, tmp_name)
+                return checked[tmp_name]
+        return 0
 
     @_check_group
     def order_graph(self, graph, loops=False, as_tree=False):
@@ -318,19 +664,31 @@ class AutomataGroupElement:
                 next_el._order_graph(graph, checked, added, loops, as_tree)
                 del checked[next_el.name]
 
-    # @check_group
-    # def _calc_tree(self):
-    #     if self.tree is not None:
-    #         return self.tree
-    #
-    #     if self.simplify:
-    #
-    #
-    #     children = []
-    #     for el in self:    # type: AutomataGroupElement
-    #         if el.name == self.name:
-    #             children.append()
-    #         children.append(el._calc_tree())
+    @_check_group
+    def _calc_tree(self):
+        if self._tree is not None:
+            return self._tree
+        self._tree = AutomataTreeNode(self.permutation,
+                                      self.name,
+                                      reverse=False,
+                                      simplify=self.simplify)
+
+        for el in self:    # type: AutomataGroupElement
+            if el.name == self.name:
+                child = AutomataTreeNode(reverse=True)
+            else:
+                child = el._calc_tree()
+            self._tree.add_child(child)
+        return self._tree
+
+    def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
+             save_filename='', show_full=False, y_scale_mul=3, lbn=False,
+             show_names=True):
+        self.tree.draw(start_x=start_x, start_y=start_y,
+                       scale=scale, radius=radius,
+                       fontsize=fontsize, y_scale_mul=y_scale_mul,
+                       save_filename=save_filename, show_full=show_full, lbn=lbn,
+                       show_names=show_names)
 
 
 class AutomataGroup:
@@ -341,19 +699,22 @@ class AutomataGroup:
     def all_instances(cls):
         return cls.__instances
 
-    def __new__(cls, name, gens: tp.List[AutomataGroupElement]):
+    def __new__(cls, name, gens: tp.List[AutomataGroupElement],
+                reduce_function=id_func):
         if not gens:
             raise ValueError("Gens should be a non-empty list of AutomataGroupElement-s")
 
         if name not in cls.__instances:
             obj = super(AutomataGroup, cls).__new__(cls)
             obj.name = name
-            obj._defined_els = {}
+            obj._defined_els = TriedDict()
             obj._defined_trees = {}
 
             obj.__gens = gens
             obj._size = gens[-1].permutation.size
-            obj._e = AutomataGroupElement('e', Permutation(obj._size), group=obj)
+            obj._e = AutomataGroupElement('e', Permutation(obj._size),
+                                          group=obj, is_atom=True)
+            obj._reduce_func = reduce_function
             obj._defined_els['e'] = obj._e
             for el in obj.__gens:
                 obj._defined_els[el.name] = el
@@ -372,6 +733,10 @@ class AutomataGroup:
         if name not in cls.__instances:
             raise KeyError(f'There is no group with name {name}.')
         del cls.__instances[name]
+
+    @property
+    def alphabet(self):
+        return [el.name for el in self.__gens]
 
     def clear_memory(self):
         self._defined_els.clear()
@@ -396,23 +761,25 @@ class AutomataGroup:
     def size(self):
         return self._size
 
-    # def create_tree_node(self, permutation, value=None, reverse=False,
-    #                      simplify=False):
-
-    def __call__(self, el) -> AutomataGroupElement:
-        if isinstance(el, str):
-            if el not in self._defined_els:
+    def __call__(self, word) -> AutomataGroupElement:
+        if isinstance(word, str):
+            if word not in self._defined_els:     # Lempel-Ziv-like algorithm
                 res = self._e
-                for prim_el in el:
-                    if prim_el not in self._defined_els:
-                        raise ValueError(f"Unknown element: {prim_el}")
-                    res *= self._defined_els[prim_el]
-                self._defined_els[el] = res
-            return self._defined_els[el]
-        elif isinstance(el, AutomataGroupElement):
-            return self.__call__(el.name)
+                left_word = word
+                last_value = self._e
+                while left_word:
+                    prefix, left_word, value = self._defined_els.max_prefix(left_word)
+                    if prefix not in self._defined_els:
+                        raise ValueError(f"Unknown prefix: {prefix}")
+                    res *= value
+                    _ = last_value * value     # cache last two prefixes
+                    last_value = value
+                self._defined_els[word] = res
+            return self._defined_els[word]
+        elif isinstance(word, AutomataGroupElement):
+            return self.__call__(word.name)
         else:
-            raise TypeError(f"Not supported type: {type(el)}")
+            raise TypeError(f"Not supported type: {type(word)}")
 
     def multiply(self, x1, x2):
 
@@ -421,16 +788,17 @@ class AutomataGroup:
         if x2.name == 'e':
             return self
 
-        res_name = x1.name + x2.name
+        res_name = self._reduce_func(x1.name + x2.name)
+        res_name = res_name if res_name else 'e'
         if not self.is_defined(res_name):
 
             res_permutation = x2.permutation * x1.permutation  # other(self())
             res_children = []
 
             for i in range(self.size):
-                a_child = x1[i ^ x2.permutation]
-                b_child = x2[i]
-                child_name = a_child.name + b_child.name
+                a_child = x1.children[x2.permutation(i)]
+                b_child = x2.children[i]
+                child_name = self._reduce_func(a_child + b_child)
                 child_name = child_name.replace('e', '')
                 res_children.append(child_name if child_name else 'e')
 
@@ -444,18 +812,25 @@ class AutomataGroup:
     def __str__(self):
         return self.name
 
-    @staticmethod
-    def generate_H3():
+    @classmethod
+    def generate_H3(cls, apply_reduce_func=False, force=False):
         _a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]),
                                   children=('e', 'e', 'a'), is_atom=True)
         _b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]),
                                   children=('e', 'b', 'e'), is_atom=True)
         _c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
                                   children=('c', 'e', 'e'), is_atom=True)
-        return AutomataGroup('H3', [_a, _b, _c])
 
-    @staticmethod
-    def generate_H4():
+        if force and 'H3' in cls.all_instances():
+            cls.clear_group('H3')
+        if apply_reduce_func:
+            reduce_func = partial(reduce_repetitions, atoms=['a', 'b', 'c'])
+            return AutomataGroup('H3', [_a, _b, _c], reduce_function=reduce_func)
+        else:
+            return AutomataGroup('H3', [_a, _b, _c])
+
+    @classmethod
+    def generate_H4(cls, apply_reduce_func=False, force=False):
         _a = AutomataGroupElement('a', permutation=Permutation([0, 2, 1, 3]),
                                   children=('a', 'e', 'e', 'a'),
                                   is_atom=True)
@@ -474,4 +849,12 @@ class AutomataGroup:
         _g = AutomataGroupElement('g', permutation=Permutation([3, 1, 2, 0]),
                                   children=('e', 'g', 'g', 'e'),
                                   is_atom=True)
-        return AutomataGroup("H4", [_a, _b, _c, _d, _f, _g])
+        if force and 'H4' in cls.all_instances():
+            cls.clear_group('H4')
+
+        if apply_reduce_func:
+            reduce_func = partial(reduce_repetitions, atoms=list('abcdfg'))
+            return AutomataGroup('H4', [_a, _b, _c, _d, _f, _g],
+                                 reduce_function=reduce_func)
+        else:
+            return AutomataGroup('H4', [_a, _b, _c, _d, _f, _g])

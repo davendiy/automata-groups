@@ -28,6 +28,14 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(lcm(a, b), np.lcm(a, b))
         self.assertEqual(lcm(10, float('inf')), float('inf'))
 
+    def test_reduce_repetitions(self):
+        test_str = 'aaaabbbbaaaa'
+        self.assertEqual('', reduce_repetitions(test_str, ['a', 'b']))
+        test_str = 'aaaabbbbaaa'
+        self.assertEqual('a', reduce_repetitions(test_str, ['a', 'b']))
+        test_str = 'dcccaaaabbbbaaaacccd'
+        self.assertEqual('', reduce_repetitions(test_str, ['a', 'b', 'c', 'd']))
+
 
 if __name__ == '__main__':
     unittest.main()

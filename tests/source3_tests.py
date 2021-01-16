@@ -8,8 +8,8 @@
 
 import unittest
 from src.source3 import *
+from src.tools import permute
 import numpy as np
-from sympy.combinatorics import Permutation
 
 TESTS_AMOUNT = 50
 
@@ -92,6 +92,22 @@ class MyTestCase(unittest.TestCase):
 
     def test_order(self):
         pass
+
+    def test_is_finite2(self):
+        H3 = AutomataGroup.generate_H3()
+        H4 = AutomataGroup.generate_H4()
+
+        for el in H3.gens + H4.gens:   # type: AutomataGroupElement
+            self.assertEqual(el.is_finite(use_cache=False),
+                             el._is_finite2(use_cache=False))
+        self.assertEqual(H4('gcafbgca').is_finite(use_cache=False),
+                         H4('gcafbgca')._is_finite2(use_cache=False))
+
+        for el in permute(H3.alphabet, repeat=6):
+            el = H3(''.join(el))
+            self.assertEqual(el.is_finite(use_cache=False),
+                             el._is_finite2(use_cache=False))
+
 
 if __name__ == '__main__':
     unittest.main()

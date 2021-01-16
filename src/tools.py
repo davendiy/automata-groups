@@ -43,3 +43,16 @@ def all_words(space, allow_same_neighbours=False):
         i += 1
 
 
+def reduce_repetitions(word: str, atoms):
+    tmp = word
+    for el in atoms:
+        tmp = tmp.replace(el + el, '')
+    while tmp != word:
+        word = tmp
+        for el in atoms:
+            tmp = tmp.replace(el + el, '')
+    return tmp
+
+
+def id_func(x):
+    return x
