@@ -12,7 +12,7 @@ import random
 from string import ascii_lowercase, ascii_uppercase
 
 SPACE = ascii_lowercase + ascii_uppercase
-TESTS_AMOUNT = 1000
+TESTS_AMOUNT = 100
 MAX_LEN = 1000
 
 
@@ -63,6 +63,19 @@ class TestsTrie(unittest.TestCase):
                     break
             self.assertEqual((required_word, required_noise), test.max_prefix(string))
 
+    def test_max_prefix2(self):
+        all_words = set()
+        test = Trie()
+        for _ in range(TESTS_AMOUNT):
+            length = random.randint(1, MAX_LEN)
+            word = ''.join(random.choice(SPACE) for _ in range(length))
+            all_words.add(word)
+            test.add(word)
+
+        for el in all_words:
+            prefix, left = test.max_prefix(el)
+            self.assertEqual((prefix, left), (el, ''))
+
     def test_remove(self):
         all_words = set()
         test = Trie()
@@ -97,6 +110,7 @@ class TestsTrie(unittest.TestCase):
             self.assertFalse(word in test)
 
         self.assertEqual(len(all_words), len(test))
+
 
 class TestsTriedDict(unittest.TestCase):
 
@@ -138,11 +152,11 @@ class TestsTriedDict(unittest.TestCase):
         for _ in range(random.randint(1, len(all_words))):
             word = random.choice(list(all_words))
             del all_words[word]
-            test.remove(word)
+            del test[word]
             self.assertFalse(word in test)
 
         res_words = set(test)
-        self.assertEqual(all_words, res_words)
+        self.assertEqual(set(all_words), res_words)
 
 
 if __name__ == '__main__':

@@ -65,6 +65,7 @@ class TriedDict:
         cur_dict = self._root
         last_i = 0
         last_value = None
+        i = 0
         for i, letter in enumerate(string):
             if self._end in cur_dict:
                 last_i = i
@@ -73,6 +74,11 @@ class TriedDict:
                 cur_dict = cur_dict[letter]
             else:
                 break
+        else:
+            if self._end in cur_dict:
+                last_i = i + 1
+                last_value = cur_dict[self._end]
+
         return string[:last_i], string[last_i:], last_value
 
     def __str__(self):
@@ -107,6 +113,9 @@ class TriedDict:
     def values(self):
         for _, value in self.items():
             yield value
+
+    def clear(self):
+        self._root.clear()
 
     def __iter__(self):
         return self.keys()

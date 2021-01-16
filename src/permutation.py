@@ -85,6 +85,9 @@ class Permutation(tuple):
             self._order = reduce(lcm, [len(cycle) for cycle in self.cyclic_form], 1)
         return self._order
 
+    def __repr__(self):
+        return f'Permutation({self.array_form})'
+
     def __str__(self):
         if self.size == 0:
             return '()'
