@@ -6,7 +6,7 @@
 
 # by d.zashkonyi
 
-from src.source3 import *
+from autogrp.automata import *
 
 
 H3 = AutomataGroup.generate_H3()
@@ -14,6 +14,6 @@ H4 = AutomataGroup.generate_H4()
 H3('aaaaaaaaabbbbcbbbbcbcbbbbbbbbbcbbbbaaaaaaabc').show()
 H3('a' * 30 + 'b' * 40 + 'c').show()
 
-H4('gcafbgca')._is_finite2(use_cache=False)
+H4('gcafbgca').is_finite()
 
 print(H4('gcafbgca').order())

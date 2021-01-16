@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 import unittest
-from src.tools import *
+from autogrp.tools import *
 import numpy as np
 
 TESTS_AMOUNT = 50

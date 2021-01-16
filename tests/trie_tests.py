@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 import unittest
-from src.trie import Trie, TriedDict
+from autogrp.trie import Trie, TriedDict
 import random
 from string import ascii_lowercase, ascii_uppercase
 

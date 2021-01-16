@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 import unittest
-from src.permutation import Permutation as my_Permutation
+from autogrp.permutation import Permutation as my_Permutation
 from sympy.combinatorics import Permutation as sym_Permutation
 import numpy as np
 

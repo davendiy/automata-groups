@@ -7,8 +7,8 @@
 # by d.zashkonyi
 
 import unittest
-from src.source3 import *
-from src.tools import permute
+from autogrp.automata import *
+from autogrp.tools import permute
 import numpy as np
 
 TESTS_AMOUNT = 50
