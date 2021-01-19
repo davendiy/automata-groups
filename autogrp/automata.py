@@ -532,14 +532,15 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
-    def is_finite(self, check_only_0=False, verbose=False, use_dfs=False):
+    def is_finite(self, check_only=None, verbose=False, use_dfs=False):
         if use_dfs:
-            return self._is_finite_dfs(check_only_0=check_only_0, verbose=verbose)
+            return self._is_finite_dfs(check_only=check_only, verbose=verbose)
         else:
-            return self._is_finite_bfs(check_only_0=check_only_0, verbose=verbose)
+            return self._is_finite_bfs(check_only=check_only, verbose=verbose)
 
+    @_Decorators.cached('_is_finite')
     def _is_finite_dfs(self, cur_power=1, checked=None,
-                       check_only_0=False, deep=1,
+                       check_only=None, deep=1,
                        verbose=False):
         if verbose:
             print(f"Entered {deep} generation. Name: {self.name}")
@@ -548,43 +549,43 @@ class AutomataGroupElement:
         if checked is None:
             checked = {}
 
-        self._is_finite = True
+        res = True
 
         if not self.is_one():
 
             # check whether any of cyclic shifts of name was checked
             # elements with same names up to cycle shifts are conjugate
             # and therefore have same order
-            for i in range(len(self.name)):
-                tmp_name = self.name[i:] + self.name[:i]
-                if tmp_name in checked:
-                    if verbose:
-                        print('found cycle:', self.name, tmp_name)
-                    prev_power = checked[tmp_name]
-                    self._is_finite = prev_power == cur_power
-                    return self._is_finite
-
+            found = self._check_cycle_shifts(self.name, checked)
+            prev_power = checked.get(found)
+            if found and prev_power != cur_power:
+                if verbose:
+                    print(f'Found cycle between {self.name} and {found} '
+                          f'of length {cur_power / prev_power}')
+                return False
+            elif found:
+                return True
             checked[self.name] = cur_power
 
             orbits = self._get_orbits(self.permutation)
             # always start from orbit of 0
             for orbit in sorted(orbits):
+                if check_only is not None and check_only not in orbit:
+                    continue
+
                 power = len(orbit)
                 next_el = (self ** power)[orbit[0]]
                 if not next_el._is_finite_dfs(cur_power=cur_power * power,
                                               checked=checked,
-                                              check_only_0=check_only_0,
+                                              check_only=check_only,
                                               deep=deep+1, verbose=verbose):
-                    self._is_finite = False
-                    break
-
-                if check_only_0:
+                    res = False
                     break
             del checked[self.name]
 
-        return self._is_finite
+        return res
 
-    def _is_finite_bfs(self, check_only_0=False,
+    def _is_finite_bfs(self, check_only=False,
                        verbose=False):
         queue = deque()
         queue.append((self, {}, 1, 1))
@@ -603,32 +604,41 @@ class AutomataGroupElement:
             # check whether any of cyclic shifts of name was checked
             # elements with same names up to cycle shifts are conjugate
             # and therefore have same order
-            prev_power = self._check_cycle_shifts(el, checked, verbose)
+            found = self._check_cycle_shifts(el.name, checked)
 
+            prev_power = checked.get(found)
             # if we found cycle of non-unitary length it means that
             # all of predecessors are infinite elements
-            if prev_power and prev_power != cur_power:
+            if found and prev_power != cur_power:
+                if verbose:
+                    print(f'Found cycle between {el.name} and {found} '
+                          f'of length {cur_power / prev_power}')
+
                 res = False
                 for prev in checked:
                     prev = self.parent_group(prev)
                     if prev._is_finite is None:
                         prev._is_finite = False
                     else:
-                        assert not prev._is_finite
+                        assert not prev._is_finite, f'Better check {prev}'
                 return res
-            elif prev_power:
+
+            elif found:
+                if verbose:
+                    print(f'Found cycle on {el.name} '
+                          f'of length {cur_power / prev_power}')
                 continue
 
             checked[el.name] = cur_power
 
             orbits = self._get_orbits(el.permutation)
             for orbit in sorted(orbits):
+                if check_only is not None and check_only not in orbit:
+                    continue
+
                 power = len(orbit)
                 next_el = (el ** power)[orbit[0]]
                 queue.append((next_el, checked.copy(), cur_power * power, deep + 1))
-                if check_only_0:
-                    break
-
         return True
 
     @staticmethod
@@ -639,52 +649,70 @@ class AutomataGroupElement:
         return fixed_points + cycles
 
     @staticmethod
-    def _check_cycle_shifts(el, checked, verbose):
-
-        for i in range(len(el.name)):
-            tmp_name = el.name[i:] + el.name[:i]
+    def _check_cycle_shifts(el_name: str, checked):
+        for i in range(len(el_name)):
+            tmp_name = el_name[i:] + el_name[:i]
             if tmp_name in checked:
-                if verbose:
-                    print('found cycle:', el.name, tmp_name)
-                return checked[tmp_name]
-        return 0
+                return tmp_name
+        return ''
 
     @_Decorators.check_group
-    def order_graph(self, graph, loops=False, as_tree=False):
+    def order_graph(self, graph, loops=False, as_tree=False, max_deep=10, short_names=True):
         added = defaultdict(int)
         checked = {}
         added[self.name] += 1
-        cur_vertex = f'{self.name} #{added[self.name]}'
+        cur_vertex = self._create_name(self.name, added[self.name], short_names)
         graph.add_vertex(cur_vertex)
         checked[self.name] = cur_vertex
-        self._order_graph(graph, checked, added, loops, as_tree)
+        self._order_graph(graph=graph, checked=checked, added=added,
+                          loops=loops, as_tree=as_tree, deep=1,
+                          max_deep=max_deep, short_names=short_names)
 
-    def _order_graph(self, graph, checked, added, loops, as_tree):
+    def _order_graph(self, graph, checked, added, loops, as_tree, deep=1,
+                     max_deep=10, short_names=True):
         cur_vertex = checked[self.name]
         if self.is_one():
             return
 
+        if deep > max_deep:
+            return
+        if deep > self._order_max_deep:
+            raise MaximumOrderDeepError(self.name)
+
         orbits = self._get_orbits(self.permutation)
-        for orbit in orbits:
+        for orbit in sorted(orbits):
             power = len(orbit)
             next_el = (self ** power)[orbit[0]]
-            next_el_name = next_el.name
-            if not loops and next_el_name == self.name:
+
+            found = self._check_cycle_shifts(next_el.name, checked)
+
+            if not loops and found == self.name:
                 continue
 
-            if next_el_name in checked:
+            if found:
                 if as_tree:
                     continue
-                dest = checked[next_el_name]
+                dest = checked[found]
                 graph.add_edge(cur_vertex, dest, power)
             else:
-                added[next_el_name] += 1
-                next_vertex = f'{next_el_name} #{added[next_el_name]}'
+                added[next_el.name] += 1
+                next_vertex = self._create_name(next_el.name,
+                                                added[next_el.name], short_names)
                 graph.add_vertex(next_vertex)
-                checked[next_el_name] = next_vertex
+                checked[next_el.name] = next_vertex
                 graph.add_edge(cur_vertex, next_vertex, power)
-                next_el._order_graph(graph, checked, added, loops, as_tree)
+                next_el._order_graph(graph=graph, checked=checked,
+                                     added=added, loops=loops, as_tree=as_tree,
+                                     deep=deep+1, max_deep=max_deep,
+                                     short_names=short_names)
                 del checked[next_el.name]
+
+    @staticmethod
+    def _create_name(name, number, short_names=True):
+        if short_names and len(name) > 7:
+            return f'{name[:3]}<{len(name) - 6}>{name[-3:]} # {number}'
+        else:
+            return f'{name} # {number}'
 
     @_Decorators.check_group
     def _calc_tree(self):
