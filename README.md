@@ -76,7 +76,7 @@ Generation: 31, name: acfcfcbacbacbacfbcabcabcfcfcabcabcfcfcabcabcabcfcfcfcacbfc
     
     завжди зупиняється.
     
-    __В процесі.__
+    __Неправда.__ Той же контрприклад -  `abcfc`
 
 
 5. Алгоритм перевірки скінченності порядку елемента, що 

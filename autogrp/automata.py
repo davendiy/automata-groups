@@ -22,6 +22,10 @@ from math import log
 
 REVERSE_VALUE = '@'
 
+AS_WORDS = 'as_words'
+AS_SHIFTED_WORDS = 'as_shifted_words'
+AS_GROUP_ELEMENTS = 'as_group_elements'
+
 
 class OutOfGroupError(TypeError):
 
@@ -498,6 +502,10 @@ class AutomataGroupElement:
         return res
 
     @_Decorators.check_group
+    def inverse(self):
+        return self ** (-1)
+
+    @_Decorators.check_group
     @_Decorators.cached('_is_one')
     def is_one(self):
 
@@ -539,14 +547,16 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
-    def is_finite(self, check_only=None, verbose=False, use_dfs=False):
+    def is_finite(self, check_only=None, verbose=False, use_dfs=False, algo=AS_SHIFTED_WORDS):
         if use_dfs:
-            return self._is_finite_dfs(check_only=check_only, verbose=verbose)
+            return self._is_finite_dfs(check_only=check_only, verbose=verbose,
+                                       algo=algo)
         else:
-            return self._is_finite_bfs(check_only=check_only, verbose=verbose)
+            return self._is_finite_bfs(check_only=check_only, verbose=verbose,
+                                       algo=algo)
 
     @_Decorators.cached('_is_finite')
-    def _is_finite_dfs(self, cur_power=1, checked=None,
+    def _is_finite_dfs(self, cur_power=1, algo=AS_SHIFTED_WORDS, checked=None,
                        check_only=None, deep=1,
                        verbose=False):
         if verbose:
@@ -563,7 +573,7 @@ class AutomataGroupElement:
             # check whether any of cyclic shifts of name was checked
             # elements with same names up to cycle shifts are conjugate
             # and therefore have same order
-            found = self._check_cycle_shifts(self.name, checked)
+            found = self._find_in_checked(self.name, checked, algo)
             prev_power = checked.get(found)
             if found and prev_power != cur_power:
                 if verbose:
@@ -583,7 +593,7 @@ class AutomataGroupElement:
                 power = len(orbit)
                 next_el = (self ** power)[orbit[0]]
                 if not next_el._is_finite_dfs(cur_power=cur_power * power,
-                                              checked=checked,
+                                              checked=checked, algo=algo,
                                               check_only=check_only,
                                               deep=deep+1, verbose=verbose):
                     res = False
@@ -593,7 +603,7 @@ class AutomataGroupElement:
         return res
 
     def _is_finite_bfs(self, check_only=False,
-                       verbose=False):
+                       verbose=False, algo=AS_SHIFTED_WORDS):
         queue = deque()
         queue.append((self, {}, 1, 1))
         while queue:
@@ -611,7 +621,7 @@ class AutomataGroupElement:
             # check whether any of cyclic shifts of name was checked
             # elements with same names up to cycle shifts are conjugate
             # and therefore have same order
-            found = self._check_cycle_shifts(el.name, checked)
+            found = self._find_in_checked(el.name, checked, algo)
 
             prev_power, prev_deep = checked.get(found, (1, 1))
             # if we found cycle of non-unitary length it means that
@@ -663,16 +673,27 @@ class AutomataGroupElement:
         cycles = permutation.cyclic_form
         return fixed_points + cycles
 
-    @staticmethod
-    def _check_cycle_shifts(el_name: str, checked):
-        for i in range(len(el_name)):
-            tmp_name = el_name[i:] + el_name[:i]
-            if tmp_name in checked:
-                return tmp_name
-        return ''
+    def _find_in_checked(self, el_name: str, checked, algo):
+        if algo == AS_WORDS:
+            return el_name if el_name in checked else ''
+        elif algo == AS_SHIFTED_WORDS:
+            for i in range(len(el_name)):
+                tmp_name = el_name[i:] + el_name[:i]
+                if tmp_name in checked:
+                    return tmp_name
+            return ''
+        elif algo == AS_GROUP_ELEMENTS:
+            for prev in checked:
+                tmp = self.parent_group(prev) * self.parent_group(el_name).inverse()
+                if tmp.is_one():
+                    return prev
+            return ''
+        else:
+            raise ValueError(f"Unknown algo: {algo}.")
 
     @_Decorators.check_group
-    def order_graph(self, graph, loops=False, as_tree=False, max_deep=10, short_names=True):
+    def order_graph(self, graph, loops=False, as_tree=False, max_deep=10,
+                    short_names=True, algo=AS_SHIFTED_WORDS):
         added = defaultdict(int)
         checked = {}
         added[self.name] += 1
@@ -681,10 +702,11 @@ class AutomataGroupElement:
         checked[self.name] = cur_vertex
         self._order_graph(graph=graph, checked=checked, added=added,
                           loops=loops, as_tree=as_tree, deep=1,
-                          max_deep=max_deep, short_names=short_names)
+                          max_deep=max_deep, short_names=short_names,
+                          algo=algo)
 
     def _order_graph(self, graph, checked, added, loops, as_tree, deep=1,
-                     max_deep=10, short_names=True):
+                     max_deep=10, short_names=True, algo=AS_SHIFTED_WORDS):
         cur_vertex = checked[self.name]
         if self.is_one():
             return
@@ -699,7 +721,7 @@ class AutomataGroupElement:
             power = len(orbit)
             next_el = (self ** power)[orbit[0]]
 
-            found = self._check_cycle_shifts(next_el.name, checked)
+            found = self._find_in_checked(next_el.name, checked, algo)
 
             if not loops and found == self.name:
                 continue
@@ -719,7 +741,7 @@ class AutomataGroupElement:
                 next_el._order_graph(graph=graph, checked=checked,
                                      added=added, loops=loops, as_tree=as_tree,
                                      deep=deep+1, max_deep=max_deep,
-                                     short_names=short_names)
+                                     short_names=short_names, algo=algo)
                 del checked[next_el.name]
 
     # TODO: add unit tests
@@ -883,12 +905,12 @@ class AutomataGroup:
         else:
             raise TypeError(f"Not supported type: {type(word)}")
 
-    def multiply(self, x1, x2):
+    def multiply(self, x1, x2) -> AutomataGroupElement:
 
         if x1.name == 'e':
             return x2
         if x2.name == 'e':
-            return self
+            return x1
 
         res_name = self._reduce_func(x1.name + x2.name)
         res_name = res_name if res_name else 'e'
