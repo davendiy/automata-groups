@@ -386,6 +386,13 @@ class AutomataGroupElement:
         self._is_one = None
         self._order = None
         self._is_finite = None
+        self._cycle_start_el = None
+        self._cycle_end_el = None
+        self._cycle_len = None
+        self._cycle_start_deep = None
+        self._cycle_end_deep = None
+        self._cycle_start_power = None
+        self._cycle_end_power = None
 
     @classmethod
     def set_order_max_deep(cls, value):
@@ -413,7 +420,7 @@ class AutomataGroupElement:
             return len(self.name)
 
     @property
-    def tree(self):
+    def tree(self) -> AutomataTreeNode:
         self._calc_tree()
         return self._tree
 
@@ -606,13 +613,21 @@ class AutomataGroupElement:
             # and therefore have same order
             found = self._check_cycle_shifts(el.name, checked)
 
-            prev_power = checked.get(found)
+            prev_power, prev_deep = checked.get(found, (1, 1))
             # if we found cycle of non-unitary length it means that
             # all of predecessors are infinite elements
             if found and prev_power != cur_power:
                 if verbose:
                     print(f'Found cycle between {el.name} and {found} '
                           f'of length {cur_power / prev_power}')
+
+                self._cycle_start_el = found
+                self._cycle_end_el = el.name
+                self._cycle_start_deep = prev_deep
+                self._cycle_end_deep = deep
+                self._cycle_start_power = prev_power
+                self._cycle_end_power = cur_power
+                self._cycle_len = cur_power / prev_power
 
                 res = False
                 for prev in checked:
@@ -629,7 +644,7 @@ class AutomataGroupElement:
                           f'of length {cur_power / prev_power}')
                 continue
 
-            checked[el.name] = cur_power
+            checked[el.name] = cur_power, deep
 
             orbits = self._get_orbits(el.permutation)
             for orbit in sorted(orbits):
@@ -707,6 +722,7 @@ class AutomataGroupElement:
                                      short_names=short_names)
                 del checked[next_el.name]
 
+    # TODO: add unit tests
     @staticmethod
     def _create_name(name, number, short_names=True):
         if short_names and len(name) > 7:
@@ -730,6 +746,42 @@ class AutomataGroupElement:
                 child = el._calc_tree()
             self._tree.add_child(child)
         return self._tree
+
+    # TODO: add unit tests
+    def describe(self, graph_class=None, show_structure=True,
+                 y_scale_mul=5, max_deep=7, loops=True,
+                 figsize=(15, 15), vertex_size=15):
+        self.disable_cache()
+        tmp = f"""
+        {str(self)}
+        Group:     {self.parent_group}
+        size:      {self.tree.size()}
+        height:    {self.tree.height()}
+        
+        is finite: {self.is_finite()}
+        order:     {self.order()} 
+        """
+        tmp2 = f"""
+        Found cycle 
+            start deep:   {self._cycle_start_deep}
+            end deep:     {self._cycle_end_deep}
+            start el:     {self._cycle_start_el}
+            end el:       {self._cycle_end_el}
+            start power:  {self._cycle_start_power}
+            end power:    {self._cycle_end_power}
+            cycle weight: {self._cycle_len}
+        """
+        self.enable_cache()
+        if self._cycle_start_el is not None:
+            tmp += tmp2
+        print(tmp)
+        if show_structure:
+            self.show(y_scale_mul=y_scale_mul)
+        if graph_class is not None:
+            graph = graph_class(loops=loops, multiedges=True)
+            self.order_graph(graph, max_deep=max_deep, loops=loops)
+            _plt = graph.plot(edge_labels=True, vertex_size=vertex_size, edge_style=':')
+            _plt.show(figsize=figsize)
 
     def show(self, start_x=0, start_y=0, scale=10, radius=4, fontsize=50,
              save_filename='', show_full=False, y_scale_mul=3, lbn=False,
