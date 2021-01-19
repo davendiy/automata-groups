@@ -35,12 +35,15 @@ def permute(space, repeat, allow_same_neighbours=False):
                 yield prev + [el]
 
 
-def all_words(space, allow_same_neighbours=False):
+def all_words(space, allow_same_neighbours=False, max_len=None):
     i = 1
     while True:
         for el in permute(space, repeat=i, allow_same_neighbours=allow_same_neighbours):
             yield ''.join(el)
         i += 1
+
+        if max_len is not None and i > max_len:
+            break
 
 
 def reduce_repetitions(word: str, atoms):
@@ -56,3 +59,15 @@ def reduce_repetitions(word: str, atoms):
 
 def id_func(x):
     return x
+
+
+class DiGraph:
+
+    def __init__(self):
+        pass
+
+    def add_vertex(self, vert):
+        pass
+
+    def add_edge(self, source, dest, value):
+        pass
