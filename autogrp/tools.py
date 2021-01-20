@@ -8,45 +8,105 @@
 # email: davendiy@gmail.com
 
 
-def gcd(x, y):
+def gcd(x: int, y: int):
+    """ Classical gcd for two integers.
+    """
     while y:
         x, y = y, x % y
     return x
 
 
 def lcm(x, y):
+    """ Lcm of two integers that supports float('inf') value.
+
+    Returns
+    -------
+    lcm of (x, y) or float('inf') if one of them is float('inf')
+    """
     if x == float('inf') or y == float('inf'):
         return float('inf')
     else:
         return x * y // gcd(x, y)
 
 
-def permute(space, repeat, allow_same_neighbours=False):
+def permute(space, repeat: int, allow_same_neighbours=False) -> str:
+    """ Get all the words of letters from the given
+    space of given length.
+
+    Parameters
+    ----------
+    space   : Iterable container of str elements of len 1.
+    repeat  : int, length of yielded words
+    allow_same_neighbours : if False then all words that don't have same elements
+                            on the neighbour positions will be returned and all
+                            possible words otherwise.
+                            Default False
+    Yields
+    -------
+    str, result word
+    """
     if repeat == 1:
         for el in space:
-            yield [el]
+            yield el
     elif repeat < 1:
-        yield []
+        yield ''
     else:
         for prev in permute(space, repeat - 1, allow_same_neighbours=allow_same_neighbours):
             for el in space:
                 if prev[-1] == el and not allow_same_neighbours:
                     continue
-                yield prev + [el]
+                yield prev + el
 
 
 def all_words(space, allow_same_neighbours=False, max_len=None):
+    """ Get all possible words (infinite set) of elements from the given
+    space.
+
+    Parameters
+    ----------
+    space   : Iterable container of str elements of len 1.
+    allow_same_neighbours : if False then all words that don't have same elements
+                            on the neighbour positions will be returned and all
+                            possible words otherwise.
+                            Default False.
+    max_len : maximum allowed length of returned words.
+              Default None, which means that there is no maximum length
+
+    Yields
+    -------
+    str, result word
+    """
     i = 1
     while True:
         for el in permute(space, repeat=i, allow_same_neighbours=allow_same_neighbours):
-            yield ''.join(el)
+            yield el
         i += 1
 
         if max_len is not None and i > max_len:
             break
 
 
+# TODO: replace atoms with elements of finite orders
 def reduce_repetitions(word: str, atoms):
+    """ Reduce given word assuming that given atoms have order 2
+    (i.e. repetition of such atoms of length 2 like 'aa' means empty word).
+
+    Parameters
+    ----------
+    word   : str, word of any length
+    atoms  : iterable of elements that could appear in word of order 2
+
+    Returns
+    -------
+    Reduced word
+
+    Examples
+    --------
+    >>> reduce_repetitions('caaaabbbbc', ['a', 'b', 'c'])
+    ''
+    >>> reduce_repetitions('caaaabbbbc', ['a', 'b'])
+    'cc'
+    """
     tmp = word
     for el in atoms:
         tmp = tmp.replace(el + el, '')

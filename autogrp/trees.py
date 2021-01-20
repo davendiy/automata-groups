@@ -14,6 +14,24 @@ import matplotlib.pyplot as plt
 
 
 class Tree:
+    """ Recursive tree structure, capable to be drawn in matplotlib.
+
+    Object of such class represents a tree node with value and any amount
+    of children.
+
+    Parameters
+    ----------
+    value     : str, value that will be shown on the plot
+    children  : iterable of Tree objects
+
+    Examples
+    --------
+
+    Notes
+    -----
+
+    TODO: add examples and notes
+    """
 
     def __init__(self, value, children=()):
         self.value = value
@@ -37,13 +55,18 @@ class Tree:
     def add_child(self, child, position=None):
         """ Add copy of the child to the tree.
 
-        :param child: Tree or any another type
-                      If one has type of Tree, it will be copied and
-                      added (inserted) to the deque of children
-                      Else new Tree with the given value will be created
-        :param position: index where we must insert the given child
-                         (default None means append to the end)
-        :return: Created or copied subtree
+        Parameters
+        ----------
+        child: Tree or any another type
+               If one has type of Tree, it will be copied and
+               added (inserted) to the deque of children
+               Else new Tree with the given value will be created
+        position: index where we must insert the given child
+                  (default None means append to the end)
+
+        Returns
+        -------
+        Created or copied subtree
         """
         if isinstance(child, Tree):
             _child = child.copy()       # add only copies of the given trees
@@ -56,13 +79,24 @@ class Tree:
         return _child
 
     def height(self):
+        """ Just height of tree, calculated using dfs.
+
+        Notes
+        -----
+        Returned value isn't cached, therefore dfs will be run anyway.
+        """
         res = 0
         for child in self.children:  # type: Tree
             res = max(child.height(), res)
         return res + 1
 
     def vert_amount(self) -> int:
-        """ Calculates the amount of all the vertices recursively.
+        """ Calculates the amount of all the vertices recursively
+        using dfs.
+
+        Notes
+        -----
+        Returned value isn't cached, therefore dfs will be run anyway.
         """
         res = 1
         for el in self.children:    # type: Tree
@@ -72,7 +106,14 @@ class Tree:
     def remove(self, child):
         """ Removes child from tree.
 
-        :param child: Tree or value of tree
+        Parameters
+        ----------
+        child : Tree or value of tree
+
+        Notes
+        -----
+        If there are more than one children with same value, only the first one
+        will be deleted if parameter child represents value.
         """
         if isinstance(child, Tree):
             self.children.remove(child)
@@ -86,16 +127,29 @@ class Tree:
              save_filename=''):
         """ Draws the tree in matplotlib.
 
-        :param start_x: x coordinate of the start position on the plane
-        :param start_y: y coordinate of the start position on the plane
-        :param scale: length of one step of offset.
-                      Offset is measure of vertices' displacement relative to
-                      left upper corner. Distance between 2 generation == one
-                      step of offset.
-        :param radius: radius of vertices
-        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
-        :param save_filename: name of file, where it should be save.
-                              Default == '', means that the picture won't be saved
+        Parameters
+        ----------
+        start_x  : x coordinate of the start position on the plane
+        start_y  : y coordinate of the start position on the plane
+        scale    : length of one step of offset.
+                   Offset is measure of vertices' displacement relative to
+                   left upper corner. Distance between 2 generation == one
+                   step of offset.
+        radius   : radius of vertices
+        fontsize : size of font (like fontsize in matplotlib.pyplot.text)
+        save_filename : name of file, where it should be save.
+                        Default == '', means that the picture won't be saved
+
+        Returns
+        -------
+        None
+
+        TODO: add examples and notes
+        Examples
+        --------
+
+        Notes
+        -----
         """
         fig, ax = plt.subplots()
         # ax = fig.add_subplot(111)
@@ -125,16 +179,21 @@ class Tree:
               fontsize, deep=0):
         """ Auxiliary recursive (DFS) function for drawing the vertices of tree.
 
-        :param ax: matplotlib object for plotting
-        :param start_x: x coordinate of the start position on the plane
-        :param start_y: y coordinate of the start position on the plane
-        :param scale: length of one step of offset.
-                      Offset is measure of vertices' displacement relative to
-                      left upper corner. Distance between 2 generation == one
-                      step of offset.
-        :param radius: radius of vertices
-        :param fontsize: size of font (like fontsize in matplotlib.pyplot.text)
-        :param deep: auxiliary parameter - number of self's generation
+        Parameters
+        ----------
+        start_x  : x coordinate of the start position on the plane
+        start_y  : y coordinate of the start position on the plane
+        scale    : length of one step of offset.
+                   Offset is measure of vertices' displacement relative to
+                   left upper corner. Distance between 2 generation == one
+                   step of offset.
+        radius   : radius of vertices
+        fontsize : size of font (like fontsize in matplotlib.pyplot.text)
+        deep : auxiliary parameter - number of self's generation
+
+        Returns
+        -------
+        None
         """
         x_coord = self._offset * scale + start_x
         y_coord = start_y - deep * scale
@@ -151,14 +210,19 @@ class Tree:
         """ Recursively (DFS) generates sequence of coordinates of vertices for
         drawing the edges.
 
-        :param start_x: x coordinate of the start position on the plane
-        :param start_y: y coordinate of the start position on the plane
-        :param scale: length of one step of offset.
-                      Offset is measure of vertices' displacement relative to
-                      left upper corner. Distance between 2 generation == one
-                      step of offset.
-        :param deep: auxiliary parameter - number of self's generation
-        :yield: (x, y) - coordinates on the plane
+        Parameters
+        ----------
+        start_x : x coordinate of the start position on the plane
+        start_y : y coordinate of the start position on the plane
+        scale   : length of one step of offset.
+                  Offset is measure of vertices' displacement relative to
+                  left upper corner. Distance between 2 generation == one
+                  step of offset.
+        deep    : auxiliary parameter - number of self's generation
+
+        Yields
+        ------
+        (x, y) - coordinates on the plane
         """
         x_coord = start_x + self._offset * scale
         y_coord = start_y - deep * scale

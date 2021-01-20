@@ -9,11 +9,38 @@
 from collections import deque
 
 
+# TODO: implement full dict interface
 class TriedDict:
     """ Implementation of Dictionary based on trie a.k.a prefix
     tree as a recursive dictionary.
+
+    Parameters
+    ----------
+    **words : elements for the result dict
+
+    Examples
+    --------
+    >>> tr_dict = TriedDict(test=2, test2=3)
+    >>> tr_dict['hello there'] = 4
+    >>> print(tr_dict)
+    TriedDict({'t': {'e': {'s': {'t': {'': 2, '2': {'': 3}}}}}, 'h': {'e': {'l': {'l': {'o': {' ': {'t': {'h': {'e': {'r': {'e': {'': 4}}}}}}}}}}}})
+    >>> 'hello there' in tr_dict
+    True
+    >>> 'test3' in tr_dict
+    False
+    >>> del tr_dict['hello there']
+    >>> 'hello there' in tr_dict
+    False
+    >>> tr_dict.max_prefix('test4')
+    ('test', '4', 2)
+    >>> list(tr_dict.items())
+    [('test', 2), ('test2', 3)]
+    >>> list(tr_dict.keys())
+    ['test', 'test2']
+    >>> list(tr_dict.values())
+    [2, 3]
     """
-    _end = '_end_'
+    _end = ''
 
     def __init__(self, **words):
         root = dict()
@@ -61,7 +88,18 @@ class TriedDict:
             del cur_dict[self._end]
             self._size -= 1
 
-    def max_prefix(self, string):
+    def max_prefix(self, string: str):
+        """ Get prefix of the given string with maximum length that
+        contains in the TriedDict.
+
+        Parameters
+        ----------
+        string  : str of any length
+
+        Returns
+        -------
+        (<found_prefix>, <left_string>, <value>)
+        """
         cur_dict = self._root
         last_i = 0
         last_value = None
@@ -81,7 +119,7 @@ class TriedDict:
 
         return string[:last_i], string[last_i:], last_value
 
-    def __str__(self):
+    def __repr__(self):
         return f'TriedDict({self._root})'
 
     def __len__(self):
@@ -133,9 +171,15 @@ class _deleted_attr:
 class Trie(TriedDict):
     """ Implementation of Trie a.k.a prefix tree as a recursive dictionary.
 
+    Parameters
+    ----------
+    *words : elements for the resuld trie
+
+    Examples
+    --------
     >>> trie = Trie("word", "word2", "word3", "w", "wo", "next")
     >>> print(trie)
-    Trie({'w': {'o': {'r': {'d': {'_end_': '_end_', '2': {'_end_': '_end_'}, '3': {'_end_': '_end_'}}}, '_end_': '_end_'}, '_end_': '_end_'}, 'n': {'e': {'x': {'t': {'_end_': '_end_'}}}}})
+    Trie({'w': {'o': {'r': {'d': {'': '', '2': {'': ''}, '3': {'': ''}}}, '': ''}, '': ''}, 'n': {'e': {'x': {'t': {'': ''}}}}})
     >>> 'word' in trie
     True
     >>> 'word123' in trie
@@ -152,6 +196,15 @@ class Trie(TriedDict):
     ['word', 'word2', 'word3', 'word1231', 'wo', 'next']
     >>> trie.max_prefix('word123next')
     ('word', '123next')
+
+    Raises
+    ------
+    TypeError  : when called methods __getitem__, __setitem__, __delitem__
+
+    Notes
+    -----
+    Trie is based on TriedDict, however it doesn't support container
+    protocol doesn't have attributes keys, values and items.
     """
 
     def __init__(self, *words):
@@ -178,7 +231,7 @@ class Trie(TriedDict):
         res_prefix, left_string, _ = super(Trie, self).max_prefix(string)
         return res_prefix, left_string
 
-    def __str__(self):
+    def __repr__(self):
         return f'Trie({self._root})'
 
     def __iter__(self):
