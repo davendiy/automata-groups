@@ -7,6 +7,7 @@
 # by David Zashkolny
 # email: davendiy@gmail.com
 
+from __future__ import annotations
 
 from .permutation import Permutation
 from .tools import lcm, reduce_repetitions, id_func
@@ -17,14 +18,17 @@ import matplotlib.pyplot as plt
 from functools import wraps, partial
 import warnings
 import typing as tp
+from dataclasses import dataclass
 from collections import defaultdict, deque
 from math import log
 
 REVERSE_VALUE = '@'
 
-AS_WORDS = 'as_words'
-AS_SHIFTED_WORDS = 'as_shifted_words'
-AS_GROUP_ELEMENTS = 'as_group_elements'
+AS_WORDS = 1
+AS_SHIFTED_WORDS = 1 << 1
+AS_GROUP_ELEMENTS = 1 << 2
+ONLY_GENERAL = 1 << 3
+ALL_FLAGS = 0b1111111111
 
 
 class OutOfGroupError(TypeError):
@@ -48,16 +52,6 @@ class DifferentGroupsError(TypeError):
 
     def __str__(self):
         return f'Bad group for multiplier: expected {self.expected}, got {self.got}.'
-
-
-class SingletonError(ValueError):
-
-    def __init__(self, name):
-        super(SingletonError, self).__init__()
-        self.name = name
-
-    def __str__(self):
-        return f'There is already group with name {self.name}.'
 
 
 class MaximumOrderDeepError(RecursionError):
@@ -355,14 +349,24 @@ class _Decorators:
             def res_method(self, *args, **kwargs):
                 if self._use_cache and getattr(self, attr_name) is not None:
                     return getattr(self, attr_name)
-                else:
-                    res = method(self, *args, **kwargs)
+                res = method(self, *args, **kwargs)
+                if self._use_cache:
                     setattr(self, attr_name, res)
-                    return res
+                return res
 
             return res_method
 
         return _cached
+
+
+@dataclass
+class _QueueParams:
+    el: AutomataGroupElement
+    checked: dict
+    cur_power: int
+    deep: int
+    check_only: int
+    algo: int
 
 
 class AutomataGroupElement:
@@ -547,13 +551,24 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
-    def is_finite(self, check_only=None, verbose=False, use_dfs=False, algo=AS_SHIFTED_WORDS):
+    def is_finite(self, check_only=None, verbose=False, use_dfs=False,
+                  algo=AS_SHIFTED_WORDS):
+
+        if (algo & ONLY_GENERAL) and check_only is not None:
+            raise ValueError(f"Can't apply simultaneously "
+                             f"check_only={check_only} and ONLY_GENERAL flags")
+
+        old_cache = self._use_cache
+        if check_only is not None:
+            self._use_cache = False
         if use_dfs:
-            return self._is_finite_dfs(check_only=check_only, verbose=verbose,
+            res = self._is_finite_dfs(check_only=check_only, verbose=verbose,
                                        algo=algo)
         else:
-            return self._is_finite_bfs(check_only=check_only, verbose=verbose,
+            res = self._is_finite_bfs(check_only=check_only, verbose=verbose,
                                        algo=algo)
+        self._use_cache = old_cache
+        return res
 
     @_Decorators.cached('_is_finite')
     def _is_finite_dfs(self, cur_power=1, algo=AS_SHIFTED_WORDS, checked=None,
@@ -584,16 +599,24 @@ class AutomataGroupElement:
                 return True
             checked[self.name] = cur_power
 
-            orbits = self._get_orbits(self.permutation)
+            orbits = self._get_orbits(self.permutation, algo)
+
+            # remove flag ONLY_GENERAL from next usages
+            nex_algo = algo & (ALL_FLAGS ^ ONLY_GENERAL)
+
             # always start from orbit of 0
             for orbit in sorted(orbits):
                 if check_only is not None and check_only not in orbit:
                     continue
 
+                # next generation will check only specified element
+                if algo & ONLY_GENERAL:
+                    check_only = min(orbit)
                 power = len(orbit)
                 next_el = (self ** power)[orbit[0]]
+
                 if not next_el._is_finite_dfs(cur_power=cur_power * power,
-                                              checked=checked, algo=algo,
+                                              checked=checked, algo=nex_algo,
                                               check_only=check_only,
                                               deep=deep+1, verbose=verbose):
                     res = False
@@ -602,45 +625,45 @@ class AutomataGroupElement:
 
         return res
 
-    def _is_finite_bfs(self, check_only=False,
+    def _is_finite_bfs(self, check_only=None,
                        verbose=False, algo=AS_SHIFTED_WORDS):
         queue = deque()
-        queue.append((self, {}, 1, 1))
+        queue.append(_QueueParams(el=self, checked={},
+                                  cur_power=1, deep=1,
+                                  check_only=check_only, algo=algo))
         while queue:
-            el, checked, cur_power, deep \
-                = queue.popleft()  # type: AutomataGroupElement, dict, int, int
+
+            params = queue.popleft()  # type: _QueueParams
 
             if verbose:
-                print(f'Generation: {deep}, name: {el.name}')
-            if el.is_one():
+                print(f'Generation: {params.deep}, name: {params.el.name}')
+            if params.el.is_one():
                 continue
 
-            if deep > self._order_max_deep:
+            if params.deep > self._order_max_deep:
                 raise MaximumOrderDeepError(self.name)
 
-            # check whether any of cyclic shifts of name was checked
-            # elements with same names up to cycle shifts are conjugate
-            # and therefore have same order
-            found = self._find_in_checked(el.name, checked, algo)
+            found = self._find_in_checked(params.el.name, params.checked, algo)
 
-            prev_power, prev_deep = checked.get(found, (1, 1))
-            # if we found cycle of non-unitary length it means that
-            # all of predecessors are infinite elements
-            if found and prev_power != cur_power:
+            prev_power, prev_deep = params.checked.get(found, (1, 1))
+
+            if found and prev_power != params.cur_power:
                 if verbose:
-                    print(f'Found cycle between {el.name} and {found} '
-                          f'of length {cur_power / prev_power}')
+                    print(f'Found cycle between {params.el.name} and {found} '
+                          f'of length {params.cur_power / prev_power}')
 
                 self._cycle_start_el = found
-                self._cycle_end_el = el.name
+                self._cycle_end_el = params.el.name
                 self._cycle_start_deep = prev_deep
-                self._cycle_end_deep = deep
+                self._cycle_end_deep = params.deep
                 self._cycle_start_power = prev_power
-                self._cycle_end_power = cur_power
-                self._cycle_len = cur_power / prev_power
+                self._cycle_end_power = params.cur_power
+                self._cycle_len = params.cur_power / prev_power
 
+                # if we found cycle of non-unitary length it means that
+                # all of predecessors are infinite elements
                 res = False
-                for prev in checked:
+                for prev in params.checked:
                     prev = self.parent_group(prev)
                     if prev._is_finite is None:
                         prev._is_finite = False
@@ -650,46 +673,71 @@ class AutomataGroupElement:
 
             elif found:
                 if verbose:
-                    print(f'Found cycle on {el.name} '
-                          f'of length {cur_power / prev_power}')
+                    print(f'Found cycle on {params.el.name} '
+                          f'of length {params.cur_power / prev_power}')
                 continue
 
-            checked[el.name] = cur_power, deep
+            params.checked[params.el.name] = params.cur_power, params.deep
 
-            orbits = self._get_orbits(el.permutation)
+            # remove flag ONLY_GENERAL from next usages
+            nex_algo = params.algo & (ALL_FLAGS ^ ONLY_GENERAL)
+            orbits = self._get_orbits(params.el.permutation, params.algo)
             for orbit in sorted(orbits):
-                if check_only is not None and check_only not in orbit:
+                if params.check_only is not None and params.check_only not in orbit:
                     continue
-
-                power = len(orbit)
-                next_el = (el ** power)[orbit[0]]
-                queue.append((next_el, checked.copy(), cur_power * power, deep + 1))
+                if params.algo & ONLY_GENERAL:
+                    next_check_only = min(orbit)
+                    power = params.el.permutation.order()
+                else:
+                    next_check_only = params.check_only
+                    power = len(orbit)
+                next_el = (params.el ** power)[orbit[0]]
+                queue.append(_QueueParams(
+                    el=next_el, checked=params.checked.copy(),
+                    cur_power=params.cur_power*power, deep=params.deep+1,
+                    algo=nex_algo, check_only=next_check_only
+                ))
         return True
 
     @staticmethod
-    def _get_orbits(permutation):
-        fixed_points = [[i] for i in range(permutation.size)
-                        if permutation(i) == i]
-        cycles = permutation.cyclic_form
-        return fixed_points + cycles
+    def _get_orbits(permutation, algo=0):
+
+        # we don't use orbits when apply ONLY_GENERAL algo
+        # because that won't work on abcfc \in H4, since
+        # its permutation is cycle of length 4 and 0-branch has
+        # infinite set of elements
+        if algo & ONLY_GENERAL:
+            return [[i] for i in range(permutation.size)]
+        else:
+            fixed_points = [[i] for i in range(permutation.size)
+                            if permutation(i) == i]
+            cycles = permutation.cyclic_form
+            return fixed_points + cycles
 
     def _find_in_checked(self, el_name: str, checked, algo):
-        if algo == AS_WORDS:
+        if algo & AS_WORDS:
             return el_name if el_name in checked else ''
-        elif algo == AS_SHIFTED_WORDS:
+
+        # check whether any of cyclic shifts of name was checked
+        # elements with same names up to cycle shifts are conjugate
+        # and therefore have same order
+        elif algo & AS_SHIFTED_WORDS:
             for i in range(len(el_name)):
                 tmp_name = el_name[i:] + el_name[:i]
                 if tmp_name in checked:
                     return tmp_name
             return ''
-        elif algo == AS_GROUP_ELEMENTS:
+
+        # a == b as elements of the group <=> a * b^(-1) - trivial element
+        elif algo & AS_GROUP_ELEMENTS:
             for prev in checked:
-                tmp = self.parent_group(prev) * self.parent_group(el_name).inverse()
+                tmp = self.parent_group(prev) \
+                      * self.parent_group(el_name).inverse()
                 if tmp.is_one():
                     return prev
             return ''
         else:
-            raise ValueError(f"Unknown algo: {algo}.")
+            raise ValueError(f"Unknown algorithm flag: {algo}.")
 
     @_Decorators.check_group
     def order_graph(self, graph, loops=False, as_tree=False, max_deep=10,
@@ -773,7 +821,8 @@ class AutomataGroupElement:
     def describe(self, graph_class=None, show_structure=True,
                  y_scale_mul=5, max_deep=7, loops=True,
                  figsize=(15, 15), vertex_size=15):
-        self.disable_cache()
+        old = self._use_cache
+        self._use_cache = False
         tmp = f"""
         {str(self)}
         Group:     {self.parent_group}
@@ -793,7 +842,8 @@ class AutomataGroupElement:
             end power:    {self._cycle_end_power}
             cycle weight: {self._cycle_len}
         """
-        self.enable_cache()
+        self._use_cache = old
+
         if self._cycle_start_el is not None:
             tmp += tmp2
         print(tmp)
@@ -824,7 +874,7 @@ class AutomataGroup:
         return cls.__instances
 
     def __new__(cls, name, gens: tp.List[AutomataGroupElement],
-                reduce_function=id_func):
+                reduce_function=id_func, lempel_ziv=True):
         if not gens:
             raise ValueError("Gens should be a non-empty list of AutomataGroupElement-s")
 
@@ -833,6 +883,7 @@ class AutomataGroup:
             obj.name = name
             obj._defined_els = TriedDict()
             obj._defined_trees = {}
+            obj._lempel_ziv = lempel_ziv
 
             obj.__gens = gens
             obj._size = gens[-1].permutation.size
@@ -851,6 +902,16 @@ class AutomataGroup:
                           f"Use AutomataGroup.clear_group('{name}') before.")
 
         return cls.__instances[name]
+
+    def enable_lempel_ziv(self):
+        if not self._lempel_ziv:
+            self.clear_memory()
+            self._lempel_ziv = True
+
+    def disable_lempel_ziv(self):
+        if self._lempel_ziv:
+            self.clear_memory()
+            self._lempel_ziv = False
 
     @classmethod
     def clear_group(cls, name):
@@ -889,15 +950,22 @@ class AutomataGroup:
         if isinstance(word, str):
             if word not in self._defined_els:     # Lempel-Ziv-like algorithm
                 res = self._e
-                left_word = word
-                last_value = self._e
-                while left_word:
-                    prefix, left_word, value = self._defined_els.max_prefix(left_word)
-                    if prefix not in self._defined_els:
-                        raise ValueError(f"Unknown prefix: {prefix}")
-                    res *= value
-                    _ = last_value * value     # cache last two prefixes
-                    last_value = value
+                if self._lempel_ziv:
+                    left_word = word
+                    last_value = self._e
+                    while left_word:
+                        prefix, left_word, value = self._defined_els.max_prefix(left_word)
+                        if prefix not in self._defined_els:
+                            raise ValueError(f"Unknown prefix: {prefix}")
+                        res *= value
+                        _ = last_value * value     # cache last two prefixes
+                        last_value = value
+                else:
+                    for el in word:
+                        if el not in self._defined_els:
+                            raise ValueError(f'Unknown element: {el}')
+                        res *= self._defined_els[el]
+
                 self._defined_els[word] = res
             return self._defined_els[word]
         elif isinstance(word, AutomataGroupElement):
