@@ -16,9 +16,9 @@ TESTS_AMOUNT = 100
 MAX_LEN = 1000
 
 
-class TestsTrie(unittest.TestCase):
+class TrieTestCase(unittest.TestCase):
 
-    def test_add(self):
+    def test_trie_add(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -29,7 +29,7 @@ class TestsTrie(unittest.TestCase):
         for word in all_words:
             self.assertTrue(word in test)
 
-    def test_iter(self):
+    def test_trie_iter(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -41,7 +41,7 @@ class TestsTrie(unittest.TestCase):
         all_trie_words = {word for word in test}
         self.assertEqual(all_words, all_trie_words)
 
-    def test_max_prefix(self):
+    def test_trie_max_prefix(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -63,7 +63,7 @@ class TestsTrie(unittest.TestCase):
                     break
             self.assertEqual((required_word, required_noise), test.max_prefix(string))
 
-    def test_max_prefix2(self):
+    def test_trie_max_prefix2(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -76,7 +76,7 @@ class TestsTrie(unittest.TestCase):
             prefix, left = test.max_prefix(el)
             self.assertEqual((prefix, left), (el, ''))
 
-    def test_remove(self):
+    def test_trie_remove(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -93,7 +93,7 @@ class TestsTrie(unittest.TestCase):
         res_words = set(test)
         self.assertEqual(all_words, res_words)
 
-    def test_len(self):
+    def test_trie_len(self):
         all_words = set()
         test = Trie()
         for _ in range(TESTS_AMOUNT):
@@ -114,7 +114,7 @@ class TestsTrie(unittest.TestCase):
 
 class TestsTriedDict(unittest.TestCase):
 
-    def test_set(self):
+    def test_trieddict_set(self):
         all_words = {}
         test = TriedDict()
         for _ in range(TESTS_AMOUNT):
@@ -127,7 +127,7 @@ class TestsTriedDict(unittest.TestCase):
         for word in all_words:
             self.assertTrue(word in test)
 
-    def test_get(self):
+    def test_trieddict_get(self):
         all_words = {}
         test = TriedDict()
         for _ in range(TESTS_AMOUNT):
@@ -140,7 +140,7 @@ class TestsTriedDict(unittest.TestCase):
         for word in all_words:
             self.assertEqual(all_words[word], test[word])
 
-    def test_del(self):
+    def test_trieddict_del(self):
         all_words = {}
         test = TriedDict()
         for _ in range(TESTS_AMOUNT):

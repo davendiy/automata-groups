@@ -15,9 +15,9 @@ MAX_LEN = 20
 TESTS_AMOUNT = 100
 
 
-class MyTestCase(unittest.TestCase):
+class PermutationTestCase(unittest.TestCase):
 
-    def test_str(self):
+    def test_perm_str(self):
         for _ in range(TESTS_AMOUNT):
             length = np.random.randint(MAX_LEN)
             perm = list(range(length))
@@ -26,7 +26,7 @@ class MyTestCase(unittest.TestCase):
             sym = sym_Permutation(perm)
             self.assertEqual(str(sym), str(my))
 
-    def test_cyclic_form(self):
+    def test_perm_cyclic_form(self):
         for _ in range(TESTS_AMOUNT):
             length = np.random.randint(MAX_LEN)
             perm = list(range(length))
@@ -35,7 +35,7 @@ class MyTestCase(unittest.TestCase):
             sym = sym_Permutation(perm)
             self.assertEqual(sym.cyclic_form, my.cyclic_form)
 
-    def test_mul(self):
+    def test_perm_mul(self):
         for _ in range(TESTS_AMOUNT):
             length1 = np.random.randint(MAX_LEN)
             length2 = np.random.randint(MAX_LEN)
@@ -53,7 +53,7 @@ class MyTestCase(unittest.TestCase):
             sym_res = sym1 * sym2
             self.assertEqual(sym_res.cyclic_form, my_res.cyclic_form)
 
-    def test_call(self):
+    def test_perm_call(self):
         for _ in range(TESTS_AMOUNT):
             length = np.random.randint(MAX_LEN)
             perm = list(range(length))
@@ -65,7 +65,7 @@ class MyTestCase(unittest.TestCase):
             for i in range(length):
                 self.assertEqual(sym(i), my(i))
 
-    def test_size(self):
+    def test_perm_size(self):
         for _ in range(TESTS_AMOUNT):
             length = np.random.randint(MAX_LEN)
             perm = list(range(length))
@@ -74,7 +74,7 @@ class MyTestCase(unittest.TestCase):
             sym = sym_Permutation(perm)
             self.assertEqual(sym.size, my.size)
 
-    def test_order(self):
+    def test_perm_order(self):
         for _ in range(TESTS_AMOUNT):
             length = np.random.randint(MAX_LEN)
             perm = list(range(length))

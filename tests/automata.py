@@ -19,7 +19,13 @@ from autogrp.tools import DiGraph
 #
 # print(H4('gcafbgca').order())
 
+# H4 = AutomataGroup.generate_H4()
+# H4.one.disable_cache()
+# test = DiGraph()
+# H4('abcfc').order_graph(test, max_deep=4, loops=True)
+
+
 H4 = AutomataGroup.generate_H4()
-H4.one.disable_cache()
-test = DiGraph()
-H4('abcfc').order_graph(test, max_deep=4, loops=True)
+x = H4('abcfc')
+x.disable_cache()
+x.is_finite(verbose=True, algo=AS_SHIFTED_WORDS | ONLY_GENERAL)

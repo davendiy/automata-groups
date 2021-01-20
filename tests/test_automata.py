@@ -8,15 +8,22 @@
 
 import unittest
 from autogrp.automata import *
-from autogrp.tools import permute
+from autogrp.tools import permute, all_words
 import numpy as np
 
 TESTS_AMOUNT = 50
 
 
-class MyTestCase(unittest.TestCase):
+class AutomataTestCase(unittest.TestCase):
 
-    def test_H3(self):
+    def test_orbits(self):
+        x = Permutation([1, 2, 0, 3])
+        expected = [[0], [1], [2], [3]]
+        self.assertListEqual(expected, AutomataGroupElement._get_orbits(x, ALL_FLAGS))
+        expected = [[3], [0, 1, 2]]
+        self.assertListEqual(expected, AutomataGroupElement._get_orbits(x))
+
+    def test_autogrp_H3(self):
         H3 = AutomataGroup.generate_H3()
         a, b, c = H3.gens    # type: AutomataGroupElement
         self.assertEqual(a.name, 'a')
@@ -37,7 +44,7 @@ class MyTestCase(unittest.TestCase):
 
         self.assertEqual(H3.one.name, 'e')
 
-    def test_H4(self):
+    def test_autorgp_H4(self):
         H4 = AutomataGroup.generate_H4()
         a, b, c, d, f, g = H4.gens   # type: AutomataGroupElement
         self.assertEqual(a.name, 'a')
@@ -66,7 +73,23 @@ class MyTestCase(unittest.TestCase):
 
         self.assertEqual(H4.one.name, 'e')
 
-    def test_is_one(self):
+    def test_lempel_ziv(self):
+        H4 = AutomataGroup.generate_H4()
+
+        els_children = []
+        els_pemutations = []
+        for el in all_words(H4.alphabet, max_len=4):
+            el = H4(el)
+            els_children.append(el.children)
+            els_pemutations.append(el.permutation)
+
+        H4.disable_lempel_ziv()
+        for i, el in enumerate(all_words(H4.alphabet, max_len=4)):
+            el = H4(el)
+            self.assertEqual(els_pemutations[i], el.permutation)
+            self.assertEqual(els_children[i], el.children)
+
+    def test_autogrp_is_one(self):
 
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
@@ -82,7 +105,7 @@ class MyTestCase(unittest.TestCase):
                 el = np.random.choice(els)
                 self.assertTrue(H3(el).is_one())
 
-    def test_is_finite(self):
+    def test_autogrp_is_finite(self):
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
 
@@ -90,7 +113,7 @@ class MyTestCase(unittest.TestCase):
             self.assertTrue(el.is_finite())
         self.assertFalse(H4('gcafbgca').is_finite())
 
-    def test_order(self):
+    def test_autogrp_order(self):
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
 
@@ -106,7 +129,11 @@ class MyTestCase(unittest.TestCase):
                 pow_el = el ** el.order()
                 self.assertTrue(pow_el.is_one())
 
-    def test_is_finite2(self):
+        self.assertEqual(2, H4('bab').order())
+        self.assertEqual(2, H4('cbabc').order())
+        self.assertEqual(2, H4('dcbabcd').order())
+
+    def test_autogrp_is_finite2(self):
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
 
@@ -122,6 +149,30 @@ class MyTestCase(unittest.TestCase):
             el = H3(''.join(el))
             self.assertEqual(el.is_finite(use_dfs=True),
                              el.is_finite())
+
+        with self.assertRaises(MaximumOrderDeepError):
+            H4('abcfc').is_finite(check_only=0)
+
+    def test_autogrp_is_finite3(self):
+        H4 = AutomataGroup.generate_H4()
+
+        AutomataGroupElement.disable_cache()
+        for el in all_words(H4.alphabet, max_len=4):
+            el = H4(el)
+            self.assertEqual(el.is_finite(algo=AS_WORDS),
+                             el.is_finite(algo=AS_SHIFTED_WORDS))
+            self.assertEqual(el.is_finite(algo=AS_SHIFTED_WORDS),
+                             el.is_finite(algo=AS_GROUP_ELEMENTS))
+
+    def test_autogrp_reduce_func(self):
+        H4 = AutomataGroup.generate_H4(apply_reduce_func=True)
+        orders = []
+        for el in all_words(H4.alphabet, max_len=4):
+            orders.append(H4(el).order())
+
+        H4 = AutomataGroup.generate_H4(force=True)
+        for el, order in zip(all_words(H4.alphabet, max_len=4), orders):
+            self.assertEqual(order, H4(el).order())
 
 
 if __name__ == '__main__':

@@ -13,7 +13,7 @@ import numpy as np
 TESTS_AMOUNT = 50
 
 
-class MyTestCase(unittest.TestCase):
+class ToolsTestCase(unittest.TestCase):
 
     def test_gcd(self):
         for _ in range(TESTS_AMOUNT):
