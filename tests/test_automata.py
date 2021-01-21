@@ -11,6 +11,21 @@ from autogrp.automata import *
 from autogrp.tools import permute, all_words
 import numpy as np
 
+import sys
+from contextlib import contextmanager
+from io import StringIO
+
+@contextmanager
+def captured_output():
+    new_out, new_err = StringIO(), StringIO()
+    old_out, old_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = new_out, new_err
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err
+
+
 TESTS_AMOUNT = 50
 
 
@@ -173,6 +188,37 @@ class AutomataTestCase(unittest.TestCase):
         H4 = AutomataGroup.generate_H4(force=True)
         for el, order in zip(all_words(H4.alphabet, max_len=4), orders):
             self.assertEqual(order, H4(el).order())
+
+    def test_autogrp_output(self):
+        H4 = AutomataGroup.generate_H4()
+        x = H4('abdfb')
+
+        with captured_output() as (out, err):
+            x.is_finite(verbose=True, print_full_els=True)
+
+        expected = """Generation: 1, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
+Generation: 2, element: H4(abdfbdbabf = (3) (abdbf, dfbab, bdbaf, abfdb))
+Generation: 3, element: H4(abdbf = (0 3 2 1) (abf, ab, df, bdb))
+Generation: 3, element: H4(dfbab = (0 2 3 1) (b, dfb, fa, dbab))
+Found cycle between dfbab and abdfb of length 4.0"""
+
+        self.assertEqual(expected.strip(), out.getvalue().strip())
+
+        with captured_output() as (out, err):
+            AutomataGroupElement.enable_cache()
+            x.is_finite(verbose=True, print_full_els=True)
+        expected2 = ''
+        self.assertEqual(expected2, out.getvalue().strip())
+
+        with captured_output() as (out, err):
+            AutomataGroupElement.disable_cache()
+            x.is_finite(verbose=True, print_full_els=False)
+        expected3 = """Generation: 1, element: abdfb
+Generation: 2, element: abdfbdbabf
+Generation: 3, element: abdbf
+Generation: 3, element: dfbab
+Found cycle between dfbab and abdfb of length 4.0"""
+        self.assertEqual(expected3, out.getvalue().strip())
 
 
 if __name__ == '__main__':

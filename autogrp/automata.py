@@ -347,7 +347,7 @@ class _Decorators:
 
             @wraps(method)
             def res_method(self, *args, **kwargs):
-                if self._use_cache and getattr(self, attr_name) is not None:
+                if type(self)._use_cache and getattr(self, attr_name) is not None:
                     return getattr(self, attr_name)
                 res = method(self, *args, **kwargs)
                 if self._use_cache:
@@ -405,7 +405,8 @@ class AutomataGroupElement:
     @classmethod
     def set_order_max_deep(cls, value):
 
-        if not isinstance(value, int):
+        if not (isinstance(value, int) or not
+                str(value.__class__) == "<class 'sage.rings.integer.Integer'>"):
             raise TypeError(f"Max_deep should be int, not {type(value)}")
 
         if value < 1:
@@ -460,7 +461,8 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     def __getitem__(self, item):
-        if isinstance(item, int):
+        if isinstance(item, int) or \
+                str(item.__class__) == "<class 'sage.rings.integer.Integer'>":
             return self.parent_group(self.children[item])
         elif isinstance(item, tuple):
             res = self
@@ -486,7 +488,8 @@ class AutomataGroupElement:
 
     @_Decorators.check_group
     def __pow__(self, power):
-        if not isinstance(power, int):
+        if not (isinstance(power, int) or
+                str(power.__class__) == "<class 'sage.rings.integer.Integer'>"):
             raise TypeError(f"Power type should be int, not {type(power)}")
 
         if power == -1:
@@ -552,7 +555,7 @@ class AutomataGroupElement:
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
     def is_finite(self, check_only=None, verbose=False, use_dfs=False,
-                  algo=AS_SHIFTED_WORDS):
+                  algo=AS_SHIFTED_WORDS, print_full_els=False):
 
         if (algo & ONLY_GENERAL) and check_only is not None:
             raise ValueError(f"Can't apply simultaneously "
@@ -563,19 +566,22 @@ class AutomataGroupElement:
             self._use_cache = False
         if use_dfs:
             res = self._is_finite_dfs(check_only=check_only, verbose=verbose,
-                                       algo=algo)
+                                       algo=algo,
+                                       print_full_els=print_full_els)
         else:
             res = self._is_finite_bfs(check_only=check_only, verbose=verbose,
-                                       algo=algo)
+                                       algo=algo,
+                                       print_full_els=print_full_els)
         self._use_cache = old_cache
         return res
 
     @_Decorators.cached('_is_finite')
     def _is_finite_dfs(self, cur_power=1, algo=AS_SHIFTED_WORDS, checked=None,
                        check_only=None, deep=1,
-                       verbose=False):
+                       verbose=False, print_full_els=False):
         if verbose:
-            print(f"Entered {deep} generation. Name: {self.name}")
+            printed = str(self) if print_full_els else self.name
+            print(f"Entered {deep} generation. Element: {printed}")
         if deep > self._order_max_deep:
             raise MaximumOrderDeepError(self.name)
         if checked is None:
@@ -626,7 +632,8 @@ class AutomataGroupElement:
         return res
 
     def _is_finite_bfs(self, check_only=None,
-                       verbose=False, algo=AS_SHIFTED_WORDS):
+                       verbose=False, algo=AS_SHIFTED_WORDS,
+                       print_full_els=False):
         queue = deque()
         queue.append(_QueueParams(el=self, checked={},
                                   cur_power=1, deep=1,
@@ -635,8 +642,9 @@ class AutomataGroupElement:
 
             params = queue.popleft()  # type: _QueueParams
 
+            printed = str(params.el) if print_full_els else params.el.name
             if verbose:
-                print(f'Generation: {params.deep}, name: {params.el.name}')
+                print(f'Generation: {params.deep}, element: {printed}')
             if params.el.is_one():
                 continue
 
@@ -828,12 +836,12 @@ class AutomataGroupElement:
         Group:     {self.parent_group}
         size:      {self.tree.size()}
         height:    {self.tree.height()}
-        
+
         is finite: {self.is_finite()}
-        order:     {self.order()} 
+        order:     {self.order()}
         """
         tmp2 = f"""
-        Found cycle 
+        Found cycle
             start deep:   {self._cycle_start_deep}
             end deep:     {self._cycle_end_deep}
             start el:     {self._cycle_start_el}
