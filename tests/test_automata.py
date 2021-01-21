@@ -193,7 +193,10 @@ class AutomataTestCase(unittest.TestCase):
         H4 = AutomataGroup.generate_H4()
         x = H4('abdfb')
 
+        x.describe(show_structure=False)
+
         with captured_output() as (out, err):
+            AutomataGroupElement.disable_cache()
             x.is_finite(verbose=True, print_full_els=True)
 
         expected = """Generation: 1, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
@@ -211,7 +214,7 @@ Found cycle between dfbab and abdfb of length 4.0"""
         self.assertEqual(expected2, out.getvalue().strip())
 
         with captured_output() as (out, err):
-            AutomataGroupElement.disable_cache()
+            x.disable_cache()
             x.is_finite(verbose=True, print_full_els=False)
         expected3 = """Generation: 1, element: abdfb
 Generation: 2, element: abdfbdbabf
