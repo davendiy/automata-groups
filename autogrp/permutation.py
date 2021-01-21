@@ -58,6 +58,24 @@ class Permutation(tuple):
             perm = [b[i] for i in a] + b[len(a):]
         return Permutation(perm)
 
+    def __pow__(self, power, modulo=None):
+        if not (isinstance(power, int) or
+                str(power.__class__) == "<class 'sage.rings.integer.Integer'>"):
+            raise TypeError(f"Power type should be int, not {type(power)}")
+
+        if power == -1:
+            power = self.order() - 1
+
+        res = Permutation(list(range(self.size)))
+        tmp = self
+        i = 1
+        while i <= power:
+            if i & power:
+                res *= tmp
+            i <<= 1
+            tmp *= tmp
+        return res
+
     @property
     def cyclic_form(self):
         if self._cyclic_form is not None:

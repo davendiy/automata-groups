@@ -83,6 +83,16 @@ class PermutationTestCase(unittest.TestCase):
             sym = sym_Permutation(perm)
             self.assertEqual(sym.order(), my.order())
 
+    def test_power(self):
+        for _ in range(TESTS_AMOUNT):
+            length = np.random.randint(MAX_LEN)
+            perm = list(range(length))
+            np.random.shuffle(perm)
+            my = my_Permutation(perm)
+            sym = sym_Permutation(perm)
+            power = np.random.randint(MAX_LEN * 4)
+            self.assertEqual(str(sym ** power), str(my ** power))
+
 
 if __name__ == '__main__':
     unittest.main()
