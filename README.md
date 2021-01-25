@@ -79,6 +79,13 @@ Generation: 31, name: acfcfcbacbacbacfbcabcabcfcfcabcabcfcfcabcabcabcfcfcfcacbfc
     __В процесі.__ Поки наче зупиняється
 
 
+4. В дереві елемента скінченного порядку є тільки елементи 
+   скінченного порядку 
+   
+   __Неправда.__ Контрприклад: `abd`
+
+![abd](./graphs/finite_with_infinites.png)
+
 #### Доведення зупинки
 
 1. Не існує елемента з підстановкою порядку 4, у якого після піднесення
