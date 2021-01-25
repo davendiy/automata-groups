@@ -82,7 +82,7 @@ Generation: 31, name: acfcfcbacbacbacfbcabcabcfcfcabcabcfcfcabcabcabcfcfcfcacbfc
 4. В дереві елемента скінченного порядку є тільки елементи 
    скінченного порядку 
    
-   __Неправда.__ Контрприклад: `abd`
+   __Неправда.__ Контрприклад: `abd = (0 1 2 3) (d, bd, ab, a)`
 
 ![abd](./graphs/finite_with_infinites.png)
 
