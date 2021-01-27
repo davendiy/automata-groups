@@ -7,6 +7,23 @@
 # by David Zashkolny
 # email: davendiy@gmail.com
 
+import random
+
+import sys
+from contextlib import contextmanager
+from io import StringIO
+
+
+@contextmanager
+def captured_output():
+    new_out, new_err = StringIO(), StringIO()
+    old_out, old_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = new_out, new_err
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err
+
 
 def gcd(x: int, y: int):
     """ Classical gcd for two integers.
@@ -115,6 +132,24 @@ def reduce_repetitions(word: str, atoms):
         for el in atoms:
             tmp = tmp.replace(el + el, '')
     return tmp
+
+
+def random_el(space, repeat, allow_same_neighbours=False):
+
+    if allow_same_neighbours:
+        return [random.choice(space) for _ in range(repeat)]
+
+    first = random.choice(space)
+    res = [first]
+    for _ in range(1, repeat):
+
+        for i, el in enumerate(space):
+            if el == res[-1]:
+                while (j := random.randint(0, len(space)-1)) == i:
+                    pass
+                res.append(space[j])
+                break
+    return ''.join(res)
 
 
 def id_func(x):

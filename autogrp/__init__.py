@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 from .permutation import Permutation
-from .tools import reduce_repetitions, all_words, permute
+from .tools import reduce_repetitions, all_words, permute, random_el
 from .automata import AutomataGroup, AutomataGroupElement, \
         AS_GROUP_ELEMENTS, AS_WORDS, AS_SHIFTED_WORDS, ONLY_GENERAL,\
         DifferentGroupsError, OutOfGroupError, MaximumOrderDeepError
@@ -15,4 +15,4 @@ from .automata import AutomataGroup, AutomataGroupElement, \
 __all__ = ['reduce_repetitions', 'Permutation', 'all_words', 'permute',
            'AutomataGroup', 'AutomataGroupElement', 'AS_GROUP_ELEMENTS',
            'AS_SHIFTED_WORDS', 'AS_WORDS', 'ONLY_GENERAL', 'OutOfGroupError',
-           'MaximumOrderDeepError', 'DifferentGroupsError']
+           'MaximumOrderDeepError', 'DifferentGroupsError', 'random_el']
