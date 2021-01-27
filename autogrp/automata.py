@@ -347,7 +347,7 @@ class _Decorators:
 
             @wraps(method)
             def res_method(self, *args, **kwargs):
-                if type(self)._use_cache and getattr(self, attr_name) is not None:
+                if self._use_cache and getattr(self, attr_name) is not None:
                     return getattr(self, attr_name)
                 res = method(self, *args, **kwargs)
                 if self._use_cache:
@@ -374,7 +374,7 @@ class AutomataGroupElement:
     _order_max_deep = 30
     _use_cache = True
 
-    def __init__(self, name, permutation,
+    def __init__(self, name: str, permutation: Permutation,
                  children=None, is_atom=False, group=None):
         self.name = name
         self._perm = permutation
@@ -562,8 +562,11 @@ class AutomataGroupElement:
                              f"check_only={check_only} and ONLY_GENERAL flags")
 
         old_cache = self._use_cache
-        if check_only is not None:
-            self._use_cache = False
+        if check_only is not None and old_cache:
+            warnings.warn(f"Used check_only={check_only} with enabled caching. "
+                          f"Disabling caching...")
+            self.disable_cache()
+
         if use_dfs:
             res = self._is_finite_dfs(check_only=check_only, verbose=verbose,
                                        algo=algo,
@@ -572,7 +575,9 @@ class AutomataGroupElement:
             res = self._is_finite_bfs(check_only=check_only, verbose=verbose,
                                        algo=algo,
                                        print_full_els=print_full_els)
-        self._use_cache = old_cache
+        if old_cache:
+            warnings.warn(f"Enabling cache again.")
+            self.enable_cache()
         return res
 
     @_Decorators.cached('_is_finite')
@@ -673,9 +678,9 @@ class AutomataGroupElement:
                 res = False
                 for prev in params.checked:
                     prev = self.parent_group(prev)
-                    if prev._is_finite is None:
+                    if prev._is_finite is None and self._use_cache:
                         prev._is_finite = False
-                    else:
+                    elif self._use_cache:
                         assert not prev._is_finite, f'Better check {prev}'
                 return res
 
@@ -753,7 +758,7 @@ class AutomataGroupElement:
         added = defaultdict(int)
         checked = {}
         added[self.name] += 1
-        cur_vertex = self._create_name(self.name, added[self.name], short_names)
+        cur_vertex = self._create_name(self.name, 'START', short_names)
         graph.add_vertex(cur_vertex)
         checked[self.name] = cur_vertex
         self._order_graph(graph=graph, checked=checked, added=added,
@@ -825,41 +830,54 @@ class AutomataGroupElement:
             self._tree.add_child(child)
         return self._tree
 
+
     # TODO: add unit tests
     def describe(self, graph_class=None, show_structure=True,
                  y_scale_mul=5, max_deep=7, loops=True,
-                 figsize=(15, 15), vertex_size=15):
+                 figsize=(15, 15), vertex_size=15, print_full_els=False,
+                 verbose=True, short_names=True, as_tree=False):
         old = self._use_cache
-        self._use_cache = False
-        tmp = f"""
-        {str(self)}
-        Group:     {self.parent_group}
-        size:      {self.tree.size()}
-        height:    {self.tree.height()}
+        self.disable_cache()
 
-        is finite: {self.is_finite()}
-        order:     {self.order()}
-        """
-        tmp2 = f"""
-        Found cycle
-            start deep:   {self._cycle_start_deep}
-            end deep:     {self._cycle_end_deep}
-            start el:     {self._cycle_start_el}
-            end el:       {self._cycle_end_el}
-            start power:  {self._cycle_start_power}
-            end power:    {self._cycle_end_power}
-            cycle weight: {self._cycle_len}
-        """
-        self._use_cache = old
+        n = max(100 - len(str(self)), 0)
+        n //= 2
+        tmp = (
+            f"{'=' * n}{str(self)}{'=' * n}\n"
+            f'Group:     {self.parent_group}\n'
+            f'size:      {self.tree.size()}\n'
+            f'height:    {self.tree.height()}\n'
+        )
+        print(tmp)
+
+        tmp = (
+            f'\nis finite: {self.is_finite(verbose=verbose, print_full_els=print_full_els)}\n'
+            f'order:     {self.order()}\n\n'
+        )
+
+        tmp2 = (
+            f'Found cycle\n'
+            f'    start deep:   {self._cycle_start_deep}\n'
+            f'    end deep:     {self._cycle_end_deep}\n'
+            f'    start el:     {self._cycle_start_el}\n'
+            f'    end el:       {self._cycle_end_el}\n'
+            f'    start power:  {self._cycle_start_power}\n'
+            f'    end power:    {self._cycle_end_power}\n'
+            f'    cycle weight: {self._cycle_len}\n'
+            f"{'=' * 100}\n"
+        )
+        if old:
+            self.enable_cache()
 
         if self._cycle_start_el is not None:
             tmp += tmp2
         print(tmp)
+
         if show_structure:
             self.show(y_scale_mul=y_scale_mul)
         if graph_class is not None:
             graph = graph_class(loops=loops, multiedges=True)
-            self.order_graph(graph, max_deep=max_deep, loops=loops)
+            self.order_graph(graph, max_deep=max_deep, loops=loops,
+                             short_names=short_names, as_tree=as_tree)
             _plt = graph.plot(edge_labels=True, vertex_size=vertex_size, edge_style=':')
             _plt.show(figsize=figsize)
 

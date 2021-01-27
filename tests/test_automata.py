@@ -8,22 +8,8 @@
 
 import unittest
 from autogrp.automata import *
-from autogrp.tools import permute, all_words
+from autogrp.tools import permute, all_words, captured_output
 import numpy as np
-
-import sys
-from contextlib import contextmanager
-from io import StringIO
-
-@contextmanager
-def captured_output():
-    new_out, new_err = StringIO(), StringIO()
-    old_out, old_err = sys.stdout, sys.stderr
-    try:
-        sys.stdout, sys.stderr = new_out, new_err
-        yield sys.stdout, sys.stderr
-    finally:
-        sys.stdout, sys.stderr = old_out, old_err
 
 
 TESTS_AMOUNT = 50
@@ -190,13 +176,15 @@ class AutomataTestCase(unittest.TestCase):
             self.assertEqual(order, H4(el).order())
 
     def test_autogrp_output(self):
-        H4 = AutomataGroup.generate_H4()
+        H4 = AutomataGroup.generate_H4(force=True)
         x = H4('abdfb')
 
-        x.describe(show_structure=False)
+        with captured_output() as (_, _):
+            x.enable_cache()
+            x.is_finite()
 
         with captured_output() as (out, err):
-            AutomataGroupElement.disable_cache()
+            x.disable_cache()
             x.is_finite(verbose=True, print_full_els=True)
 
         expected = """Generation: 1, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
@@ -208,7 +196,7 @@ Found cycle between dfbab and abdfb of length 4.0"""
         self.assertEqual(expected.strip(), out.getvalue().strip())
 
         with captured_output() as (out, err):
-            AutomataGroupElement.enable_cache()
+            x.enable_cache()
             x.is_finite(verbose=True, print_full_els=True)
         expected2 = ''
         self.assertEqual(expected2, out.getvalue().strip())
