@@ -176,6 +176,16 @@ class AutomataTestCase(unittest.TestCase):
         for el, order in zip(all_words(H4.alphabet, max_len=4), orders):
             self.assertEqual(order, H4(el).order())
 
+    def test_call(self):
+        H4 = AutomataGroup.generate_H4()
+        self.assertEqual('11111', H4.one('11111'))
+        self.assertEqual('21111', H4('a')(11111))
+        self.assertEqual('12222', H4('a')(22222))
+        self.assertEqual('01222', H4('ab')(22222))
+
+        H3 = AutomataGroup.generate_H3()
+        self.assertEqual('0000', H3('abcabcabcabcabca')('2222'))
+
     def test_autogrp_output(self):
         H4 = AutomataGroup.generate_H4(force=True)
         x = H4('abdfb')

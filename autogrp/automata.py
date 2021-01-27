@@ -463,11 +463,28 @@ class AutomataGroupElement:
         else:
             raise TypeError(f"Tree indices must be int or tuple, not {type(item)}")
 
+    @_Decorators.check_group
+    def __call__(self, word):
+        if isinstance(word, int) or \
+                str(word.__class__) == "<class 'sage.rings.integer.Integer'>":
+            word = str(word)
+
+        if not isinstance(word, str):
+            raise TypeError(f'Word should be int or str, not {type(word)}')
+        elif not (got := set(word)) <= self.parent_group.expected_words:
+            raise ValueError(f'Bad elements for applying group action: '
+                             f'{got - self.parent_group.expected_words}')
+
+        now_el = self
+        res = ''
+        for el in word:
+            el = int(el)
+            res += str(now_el.permutation(el))
+            now_el = now_el[el]
+        return res
+
     def __repr__(self):
         return f'{self.parent_group.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
-
-    def __str__(self):
-        return self.__repr__()
 
     @_Decorators.check_group
     def __mul__(self, other):
@@ -904,6 +921,8 @@ class AutomataGroup:
 
             obj.__gens = gens
             obj._size = gens[-1].permutation.size
+            obj._expected_words = set(str(el) for el in range(obj._size))
+
             obj._e = AutomataGroupElement('e', Permutation(obj._size),
                                           group=obj, is_atom=True)
             obj._reduce_func = reduce_function
@@ -919,6 +938,10 @@ class AutomataGroup:
                           f"Use AutomataGroup.clear_group('{name}') before.")
 
         return cls.__instances[name]
+
+    @property
+    def expected_words(self):
+        return self._expected_words
 
     def enable_cache(self):
         self._use_cache = True
