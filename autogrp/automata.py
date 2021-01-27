@@ -347,10 +347,10 @@ class _Decorators:
 
             @wraps(method)
             def res_method(self, *args, **kwargs):
-                if self._use_cache and getattr(self, attr_name) is not None:
+                if self.parent_group.cache and getattr(self, attr_name) is not None:
                     return getattr(self, attr_name)
                 res = method(self, *args, **kwargs)
-                if self._use_cache:
+                if self.parent_group.cache:
                     setattr(self, attr_name, res)
                 return res
 
@@ -372,7 +372,6 @@ class _QueueParams:
 class AutomataGroupElement:
 
     _order_max_deep = 30
-    _use_cache = True
 
     def __init__(self, name: str, permutation: Permutation,
                  children=None, is_atom=False, group=None):
@@ -413,14 +412,6 @@ class AutomataGroupElement:
             raise ValueError(f'Max_deep should be greater than 1')
 
         cls._order_max_deep = value
-
-    @classmethod
-    def enable_cache(cls):
-        cls._use_cache = True
-
-    @classmethod
-    def disable_cache(cls):
-        cls._use_cache = False
 
     def __len__(self):
         if self.name == 'e':
@@ -561,11 +552,11 @@ class AutomataGroupElement:
             raise ValueError(f"Can't apply simultaneously "
                              f"check_only={check_only} and ONLY_GENERAL flags")
 
-        old_cache = self._use_cache
+        old_cache = self.parent_group.cache
         if check_only is not None and old_cache:
             warnings.warn(f"Used check_only={check_only} with enabled caching. "
                           f"Disabling caching...")
-            self.disable_cache()
+            self.parent_group.disable_cache()
 
         if use_dfs:
             res = self._is_finite_dfs(check_only=check_only, verbose=verbose,
@@ -577,7 +568,7 @@ class AutomataGroupElement:
                                        print_full_els=print_full_els)
         if old_cache:
             warnings.warn(f"Enabling cache again.")
-            self.enable_cache()
+            self.parent_group.enable_cache()
         return res
 
     @_Decorators.cached('_is_finite')
@@ -678,9 +669,9 @@ class AutomataGroupElement:
                 res = False
                 for prev in params.checked:
                     prev = self.parent_group(prev)
-                    if prev._is_finite is None and self._use_cache:
+                    if prev._is_finite is None and self.parent_group.cache:
                         prev._is_finite = False
-                    elif self._use_cache:
+                    elif self.parent_group.cache:
                         assert not prev._is_finite, f'Better check {prev}'
                 return res
 
@@ -830,14 +821,13 @@ class AutomataGroupElement:
             self._tree.add_child(child)
         return self._tree
 
-
     # TODO: add unit tests
     def describe(self, graph_class=None, show_structure=True,
                  y_scale_mul=5, max_deep=7, loops=True,
                  figsize=(15, 15), vertex_size=15, print_full_els=False,
                  verbose=True, short_names=True, as_tree=False):
-        old = self._use_cache
-        self.disable_cache()
+        old = self.parent_group.cache
+        self.parent_group.disable_cache()
 
         n = max(100 - len(str(self)), 0)
         n //= 2
@@ -866,7 +856,7 @@ class AutomataGroupElement:
             f"{'=' * 100}\n"
         )
         if old:
-            self.enable_cache()
+            self.parent_group.enable_cache()
 
         if self._cycle_start_el is not None:
             tmp += tmp2
@@ -910,6 +900,7 @@ class AutomataGroup:
             obj._defined_els = TriedDict()
             obj._defined_trees = {}
             obj._lempel_ziv = lempel_ziv
+            obj._use_cache = True
 
             obj.__gens = gens
             obj._size = gens[-1].permutation.size
@@ -928,6 +919,16 @@ class AutomataGroup:
                           f"Use AutomataGroup.clear_group('{name}') before.")
 
         return cls.__instances[name]
+
+    def enable_cache(self):
+        self._use_cache = True
+
+    def disable_cache(self):
+        self._use_cache = False
+
+    @property
+    def cache(self):
+        return self._use_cache
 
     def enable_lempel_ziv(self):
         if not self._lempel_ziv:

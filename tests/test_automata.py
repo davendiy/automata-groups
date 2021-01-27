@@ -138,7 +138,8 @@ class AutomataTestCase(unittest.TestCase):
         H3 = AutomataGroup.generate_H3()
         H4 = AutomataGroup.generate_H4()
 
-        AutomataGroupElement.disable_cache()
+        H4.disable_cache()
+        H3.disable_cache()
 
         for el in H3.gens + H4.gens:   # type: AutomataGroupElement
             self.assertEqual(el.is_finite(use_dfs=True),
@@ -157,7 +158,7 @@ class AutomataTestCase(unittest.TestCase):
     def test_autogrp_is_finite3(self):
         H4 = AutomataGroup.generate_H4()
 
-        AutomataGroupElement.disable_cache()
+        H4.disable_cache()
         for el in all_words(H4.alphabet, max_len=4):
             el = H4(el)
             self.assertEqual(el.is_finite(algo=AS_WORDS),
@@ -180,11 +181,10 @@ class AutomataTestCase(unittest.TestCase):
         x = H4('abdfb')
 
         with captured_output() as (_, _):
-            x.enable_cache()
             x.is_finite()
 
         with captured_output() as (out, err):
-            x.disable_cache()
+            H4.disable_cache()
             x.is_finite(verbose=True, print_full_els=True)
 
         expected = """Generation: 1, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
@@ -196,13 +196,13 @@ Found cycle between dfbab and abdfb of length 4.0"""
         self.assertEqual(expected.strip(), out.getvalue().strip())
 
         with captured_output() as (out, err):
-            x.enable_cache()
+            H4.enable_cache()
             x.is_finite(verbose=True, print_full_els=True)
         expected2 = ''
         self.assertEqual(expected2, out.getvalue().strip())
 
         with captured_output() as (out, err):
-            x.disable_cache()
+            H4.disable_cache()
             x.is_finite(verbose=True, print_full_els=False)
         expected3 = """Generation: 1, element: abdfb
 Generation: 2, element: abdfbdbabf
