@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from .permutation import Permutation
-from .tools import lcm, reduce_repetitions, id_func
+from .tools import lcm, reduce_repetitions, id_func, random_el
 from .trees import Tree
 from .trie import TriedDict
 
@@ -29,6 +29,9 @@ AS_SHIFTED_WORDS = 1 << 1
 AS_GROUP_ELEMENTS = 1 << 2
 ONLY_GENERAL = 1 << 3
 ALL_FLAGS = 0b1111111111
+
+
+MAX_ITERATIONS = 10_000
 
 
 class OutOfGroupError(TypeError):
@@ -464,7 +467,7 @@ class AutomataGroupElement:
             raise TypeError(f"Tree indices must be int or tuple, not {type(item)}")
 
     @_Decorators.check_group
-    def __call__(self, word):
+    def __call__(self, word) -> str:
         if isinstance(word, int) or \
                 str(word.__class__) == "<class 'sage.rings.integer.Integer'>":
             word = str(word)
@@ -482,6 +485,23 @@ class AutomataGroupElement:
             res += str(now_el.permutation(el))
             now_el = now_el[el]
         return res
+
+    @_Decorators.check_group
+    def call_graph(self, word, graph):
+        word = str(word)
+        prev_word = word
+        x = self(word)
+        graph.add_vertex(word)
+        checked = set()
+        i = 0
+        while True:
+            graph.add_edge(prev_word, x)
+            if x in checked or i > MAX_ITERATIONS:
+                break
+
+            prev_word = x
+            x = self(x)
+            i += 1
 
     def __repr__(self):
         return f'{self.parent_group.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
@@ -583,7 +603,7 @@ class AutomataGroupElement:
             res = self._is_finite_bfs(check_only=check_only, verbose=verbose,
                                        algo=algo,
                                        print_full_els=print_full_els)
-        if old_cache:
+        if check_only is not None and old_cache:
             warnings.warn(f"Enabling cache again.")
             self.parent_group.enable_cache()
         return res
@@ -842,7 +862,7 @@ class AutomataGroupElement:
     def describe(self, graph_class=None, show_structure=True,
                  y_scale_mul=5, max_deep=7, loops=True,
                  figsize=(15, 15), vertex_size=15, print_full_els=False,
-                 verbose=True, short_names=True, as_tree=False):
+                 verbose=True, short_names=True, as_tree=False, algo=AS_SHIFTED_WORDS):
         old = self.parent_group.cache
         self.parent_group.disable_cache()
 
@@ -857,7 +877,7 @@ class AutomataGroupElement:
         print(tmp)
 
         tmp = (
-            f'\nis finite: {self.is_finite(verbose=verbose, print_full_els=print_full_els)}\n'
+            f'\nis finite: {self.is_finite(verbose=verbose, print_full_els=print_full_els, algo=algo)}\n'
             f'order:     {self.order()}\n\n'
         )
 
@@ -987,6 +1007,10 @@ class AutomataGroup:
     @property
     def one(self) -> AutomataGroupElement:
         return self._e
+
+    def random_el(self, length, allow_same_neighbours=False):
+        return self(random_el(self.alphabet, repeat=length,
+                              allow_same_neighbours=allow_same_neighbours))
 
     @property
     def gens(self) -> tp.List[AutomataGroupElement]:
