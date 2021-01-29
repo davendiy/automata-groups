@@ -91,7 +91,8 @@ Generation: 31, name: acfcfcbacbacbacfbcabcabcfcfcabcabcfcfcabcabcabcfcfcfcacbfc
    елемент нескінченного порядку з таким рекурсивним повторенням на першому
    рівні
 
-   __Неправда.__ Контрприклад: `dgdcbd = (1 2 3) (dcd, dbd, gcb, dgd)`
+   __Неправда.__ Контрприклад: `abafa = (0 1 2 3) (afa, bf, aba, aa)` (всі елементи
+   в дереві мають скінченний порядок, проте сам елемент має нескінченний)
 
 ![dgdcbd](./graphs/infinite_with_finites.png)
 
