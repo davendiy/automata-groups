@@ -27,5 +27,13 @@ from autogrp.tools import DiGraph
 
 H4 = AutomataGroup.generate_H4()
 x = H4('abcfc')
-x.disable_cache()
-x.is_finite(verbose=True, algo=AS_SHIFTED_WORDS | ONLY_GENERAL)
+# x.disable_cache()
+# x.is_finite(verbose=True, algo=AS_SHIFTED_WORDS | ONLY_GENERAL)
+#
+# x.show()
+#
+# for el in x.dfs():
+#     print(el)
+
+
+H4('fdcgcaf').describe(algo=AS_WORDS)

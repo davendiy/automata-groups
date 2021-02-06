@@ -197,10 +197,10 @@ class AutomataTestCase(unittest.TestCase):
             H4.disable_cache()
             x.is_finite(verbose=True, print_full_els=True)
 
-        expected = """Generation: 1, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
-Generation: 2, element: H4(abdfbdbabf = (3) (abdbf, dfbab, bdbaf, abfdb))
-Generation: 3, element: H4(abdbf = (0 3 2 1) (abf, ab, df, bdb))
-Generation: 3, element: H4(dfbab = (0 2 3 1) (b, dfb, fa, dbab))
+        expected = """Generation: 0, element: H4(abdfb = (0 3 2 1) (abf, ab, df, bdb))
+Generation: 1, element: H4(abdfbdbabf = (3) (abdbf, dfbab, bdbaf, abfdb))
+Generation: 2, element: H4(abdbf = (0 3 2 1) (abf, ab, df, bdb))
+Generation: 2, element: H4(dfbab = (0 2 3 1) (b, dfb, fa, dbab))
 Found cycle between dfbab and abdfb of length 4.0"""
 
         self.assertEqual(expected.strip(), out.getvalue().strip())
@@ -214,10 +214,10 @@ Found cycle between dfbab and abdfb of length 4.0"""
         with captured_output() as (out, err):
             H4.disable_cache()
             x.is_finite(verbose=True, print_full_els=False)
-        expected3 = """Generation: 1, element: abdfb
-Generation: 2, element: abdfbdbabf
-Generation: 3, element: abdbf
-Generation: 3, element: dfbab
+        expected3 = """Generation: 0, element: abdfb
+Generation: 1, element: abdfbdbabf
+Generation: 2, element: abdbf
+Generation: 2, element: dfbab
 Found cycle between dfbab and abdfb of length 4.0"""
         self.assertEqual(expected3, out.getvalue().strip())
 

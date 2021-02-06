@@ -370,6 +370,7 @@ class _QueueParams:
     deep: int
     check_only: int
     algo: int
+    word: str
 
 
 class AutomataGroupElement:
@@ -449,9 +450,31 @@ class AutomataGroupElement:
         self._is_finite = None
 
     @_Decorators.check_group
-    def __iter__(self):
+    def __iter__(self) -> AutomataGroupElement:
         for el in self.children:
             yield self.parent_group(el)
+
+    @_Decorators.check_group
+    def dfs(self):
+        yield self
+        for child in self:    # type: AutomataGroupElement
+            if child.name == self.name:
+                continue
+            if child.simplify:
+                yield child
+                continue
+
+            for el in child.dfs():
+                yield el
+
+    @_Decorators.check_group
+    def bfs(self):
+        queue = deque([self])
+        while queue:
+            cur_el = queue.pop()
+            yield cur_el
+            if not cur_el.simplify:
+                queue.extend(el for el in cur_el)
 
     @_Decorators.check_group
     def __getitem__(self, item):
@@ -583,7 +606,7 @@ class AutomataGroupElement:
     @_Decorators.check_group
     @_Decorators.cached('_is_finite')
     def is_finite(self, check_only=None, verbose=False, use_dfs=False,
-                  algo=AS_SHIFTED_WORDS, print_full_els=False):
+                  algo=AS_SHIFTED_WORDS, print_full_els=False, path_to_cycle=None):
 
         if (algo & ONLY_GENERAL) and check_only is not None:
             raise ValueError(f"Can't apply simultaneously "
@@ -595,14 +618,18 @@ class AutomataGroupElement:
                           f"Disabling caching...")
             self.parent_group.disable_cache()
 
+        if use_dfs and path_to_cycle is not None:
+            raise NotImplementedError()
+
         if use_dfs:
             res = self._is_finite_dfs(check_only=check_only, verbose=verbose,
-                                       algo=algo,
-                                       print_full_els=print_full_els)
+                                      algo=algo,
+                                      print_full_els=print_full_els)
         else:
             res = self._is_finite_bfs(check_only=check_only, verbose=verbose,
-                                       algo=algo,
-                                       print_full_els=print_full_els)
+                                      algo=algo,
+                                      print_full_els=print_full_els,
+                                      path_to_cycle=path_to_cycle)
         if check_only is not None and old_cache:
             warnings.warn(f"Enabling cache again.")
             self.parent_group.enable_cache()
@@ -610,7 +637,7 @@ class AutomataGroupElement:
 
     @_Decorators.cached('_is_finite')
     def _is_finite_dfs(self, cur_power=1, algo=AS_SHIFTED_WORDS, checked=None,
-                       check_only=None, deep=1,
+                       check_only=None, deep=0,
                        verbose=False, print_full_els=False):
         if verbose:
             printed = str(self) if print_full_els else self.name
@@ -666,11 +693,11 @@ class AutomataGroupElement:
 
     def _is_finite_bfs(self, check_only=None,
                        verbose=False, algo=AS_SHIFTED_WORDS,
-                       print_full_els=False):
+                       print_full_els=False, path_to_cycle=None):
         queue = deque()
         queue.append(_QueueParams(el=self, checked={},
-                                  cur_power=1, deep=1,
-                                  check_only=check_only, algo=algo))
+                                  cur_power=1, deep=0,
+                                  check_only=check_only, algo=algo, word=''))
         while queue:
 
             params = queue.popleft()  # type: _QueueParams
@@ -684,7 +711,7 @@ class AutomataGroupElement:
             if params.deep > self._order_max_deep:
                 raise MaximumOrderDeepError(self.name)
 
-            found = self._find_in_checked(params.el.name, params.checked, algo)
+            found = self._find_in_checked(params.el.name, params.checked, params.algo)
 
             prev_power, prev_deep = params.checked.get(found, (1, 1))
 
@@ -703,14 +730,17 @@ class AutomataGroupElement:
 
                 # if we found cycle of non-unitary length it means that
                 # all of predecessors are infinite elements
-                res = False
+
                 for prev in params.checked:
                     prev = self.parent_group(prev)
                     if prev._is_finite is None and self.parent_group.cache:
                         prev._is_finite = False
                     elif self.parent_group.cache:
                         assert not prev._is_finite, f'Better check {prev}'
-                return res
+
+                if path_to_cycle is not None:
+                    path_to_cycle.append(params.word)
+                return False
 
             elif found:
                 if verbose:
@@ -736,8 +766,9 @@ class AutomataGroupElement:
                 queue.append(_QueueParams(
                     el=next_el, checked=params.checked.copy(),
                     cur_power=params.cur_power*power, deep=params.deep+1,
-                    algo=nex_algo, check_only=next_check_only
-                ))
+                    algo=nex_algo, check_only=next_check_only, word=params.word+str(orbit[0])
+                    )
+                )
         return True
 
     @staticmethod
@@ -790,11 +821,11 @@ class AutomataGroupElement:
         graph.add_vertex(cur_vertex)
         checked[self.name] = cur_vertex
         self._order_graph(graph=graph, checked=checked, added=added,
-                          loops=loops, as_tree=as_tree, deep=1,
+                          loops=loops, as_tree=as_tree, deep=0,
                           max_deep=max_deep, short_names=short_names,
                           algo=algo)
 
-    def _order_graph(self, graph, checked, added, loops, as_tree, deep=1,
+    def _order_graph(self, graph, checked, added, loops, as_tree, deep=0,
                      max_deep=10, short_names=True, algo=AS_SHIFTED_WORDS):
         cur_vertex = checked[self.name]
         if self.is_one():
@@ -865,7 +896,7 @@ class AutomataGroupElement:
                  verbose=True, short_names=True, as_tree=False, algo=AS_SHIFTED_WORDS):
         old = self.parent_group.cache
         self.parent_group.disable_cache()
-
+        path_to_cycle = []
         n = max(100 - len(str(self)), 0)
         n //= 2
         tmp = (
@@ -876,9 +907,12 @@ class AutomataGroupElement:
         )
         print(tmp)
 
+        is_finite = self.is_finite(verbose=verbose,
+                                   print_full_els=print_full_els,
+                                   algo=algo, path_to_cycle=path_to_cycle)
         tmp = (
-            f'\nis finite: {self.is_finite(verbose=verbose, print_full_els=print_full_els, algo=algo)}\n'
-            f'order:     {self.order()}\n\n'
+            f'\nis finite: {is_finite}\n'
+            f"order:     {self.order(check_finite=False) if is_finite else 'inf'}\n\n"
         )
 
         tmp2 = (
@@ -890,6 +924,7 @@ class AutomataGroupElement:
             f'    start power:  {self._cycle_start_power}\n'
             f'    end power:    {self._cycle_end_power}\n'
             f'    cycle weight: {self._cycle_len}\n'
+            f'    full path:    {path_to_cycle[0] if path_to_cycle else None}\n'
             f"{'=' * 100}\n"
         )
         if old:
