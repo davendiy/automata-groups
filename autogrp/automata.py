@@ -30,6 +30,8 @@ AS_GROUP_ELEMENTS = 1 << 2
 ONLY_GENERAL = 1 << 3
 ALL_FLAGS = 0b1111111111
 
+SKIP_CHILDREN = 1
+
 
 MAX_ITERATIONS = 10_000
 
@@ -574,16 +576,18 @@ class AutomataGroupElement:
             res = False
         else:
             queue = set()
+            checked = set()
             queue.update(el for el in self.children if el != self.name)
             res = True
             while queue:
                 tmp = queue.pop()
+                checked.add(tmp)
                 child = self.parent_group(tmp)
 
                 if child.permutation.order() != 1:
                     res = False
                     break
-                queue.update(el for el in child.children if el != child.name)
+                queue.update(el for el in child.children if el not in checked)
 
         return res
 
@@ -691,18 +695,14 @@ class AutomataGroupElement:
     def _is_finite_bfs(self, check_only=None,
                        verbose=False, algo=AS_SHIFTED_WORDS,
                        print_full_els=False):
-        queue = deque()
-        queue.append(_QueueParams(el=self, checked={},
-                                  cur_power=1, deep=0,
-                                  check_only=check_only, algo=algo, word=''))
-        while queue:
 
-            params = queue.popleft()  # type: _QueueParams
+        for params in (order_gen := self.order_bfs(check_only, algo)):
 
             printed = str(params.el) if print_full_els else params.el.name
             if verbose:
                 print(f'Generation: {params.deep}, element: {printed}')
             if params.el.is_one():
+                order_gen.send(SKIP_CHILDREN)
                 continue
 
             if params.deep > self._order_max_deep:
@@ -741,33 +741,13 @@ class AutomataGroupElement:
                 if verbose:
                     print(f'Found cycle on {params.el.name} '
                           f'of length {params.cur_power / prev_power}')
+                order_gen.send(SKIP_CHILDREN)
                 continue
 
-            params.checked[params.el.name] = params.cur_power, params.deep
-
-            # remove flag ONLY_GENERAL from next usages
-            nex_algo = params.algo & (ALL_FLAGS ^ ONLY_GENERAL)
-            orbits = self._get_orbits(params.el.permutation, params.algo)
-            for orbit in sorted(orbits):
-                if params.check_only is not None and params.check_only not in orbit:
-                    continue
-                if params.algo & ONLY_GENERAL:
-                    next_check_only = min(orbit)
-                    power = params.el.permutation.order()
-                else:
-                    next_check_only = params.check_only
-                    power = len(orbit)
-                next_el = (params.el ** power)[orbit[0]]
-                queue.append(_QueueParams(
-                    el=next_el, checked=params.checked.copy(),
-                    cur_power=params.cur_power*power, deep=params.deep+1,
-                    algo=nex_algo, check_only=next_check_only, word=params.word+str(orbit[0])
-                    )
-                )
         return True
 
     @_Decorators.check_group
-    def order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS, max_deep=10):
+    def order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS):
         queue = deque()
         queue.append(_QueueParams(el=self, checked={},
                                   cur_power=1, deep=0,
@@ -775,16 +755,10 @@ class AutomataGroupElement:
         while queue:
 
             params = queue.popleft()    # type: _QueueParams
-            yield params.el
+            flag = (yield params)
 
-            if params.el.is_one():
-                continue
-
-            found = self._find_in_checked(params.el.name, params.checked, params.algo)
-
-            if found:
-                continue
-            if params.deep > max_deep:
+            if flag == SKIP_CHILDREN:
+                yield
                 continue
 
             params.checked[params.el.name] = params.cur_power, params.deep
@@ -1176,6 +1150,23 @@ class AutomataGroup:
             return AutomataGroup('H3', [_a, _b, _c], reduce_function=reduce_func)
         else:
             return AutomataGroup('H3', [_a, _b, _c])
+
+    @classmethod
+    def generate_H3_conjugated(cls, apply_reduce_func=False, force=False):
+        _a = AutomataGroupElement('a', permutation=Permutation([1, 0, 2]),
+                                  children=('e', 'e', 'b'), is_atom=True)
+        _b = AutomataGroupElement('b', permutation=Permutation([2, 1, 0]),
+                                  children=('e', 'a', 'e'), is_atom=True)
+        _c = AutomataGroupElement('c', permutation=Permutation([0, 2, 1]),
+                                  children=('c', 'e', 'e'), is_atom=True)
+
+        if force and 'H3' in cls.all_instances():
+            cls.clear_group('H3')
+        if apply_reduce_func:
+            reduce_func = partial(reduce_repetitions, atoms=['a', 'b', 'c'])
+            return AutomataGroup('H3*', [_a, _b, _c], reduce_function=reduce_func)
+        else:
+            return AutomataGroup('H3*', [_a, _b, _c])
 
     @classmethod
     def generate_H4(cls, apply_reduce_func=False, force=False):
