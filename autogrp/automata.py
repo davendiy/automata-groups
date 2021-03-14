@@ -766,6 +766,49 @@ class AutomataGroupElement:
                 )
         return True
 
+    @_Decorators.check_group
+    def order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS, max_deep=10):
+        queue = deque()
+        queue.append(_QueueParams(el=self, checked={},
+                                  cur_power=1, deep=0,
+                                  check_only=check_only, algo=algo, word=''))
+        while queue:
+
+            params = queue.popleft()    # type: _QueueParams
+            yield params.el
+
+            if params.el.is_one():
+                continue
+
+            found = self._find_in_checked(params.el.name, params.checked, params.algo)
+
+            if found:
+                continue
+            if params.deep > max_deep:
+                continue
+
+            params.checked[params.el.name] = params.cur_power, params.deep
+
+            # remove flag ONLY_GENERAL from next usages
+            nex_algo = params.algo & (ALL_FLAGS ^ ONLY_GENERAL)
+            orbits = self._get_orbits(params.el.permutation, params.algo)
+            for orbit in sorted(orbits):
+                if params.check_only is not None and params.check_only not in orbit:
+                    continue
+                if params.algo & ONLY_GENERAL:
+                    next_check_only = min(orbit)
+                    power = params.el.permutation.order()
+                else:
+                    next_check_only = params.check_only
+                    power = len(orbit)
+                next_el = (params.el ** power)[orbit[0]]
+                queue.append(_QueueParams(
+                    el=next_el, checked=params.checked.copy(),
+                    cur_power=params.cur_power * power, deep=params.deep + 1,
+                    algo=nex_algo, check_only=next_check_only, word=params.word + str(orbit[0])
+                    )
+                )
+
     @staticmethod
     def _get_orbits(permutation, algo=0):
 
@@ -845,14 +888,14 @@ class AutomataGroupElement:
                 if as_tree:
                     continue
                 dest = checked[found]
-                graph.add_edge(cur_vertex, dest, power)
+                graph.add_edge(cur_vertex, dest, f'^{power}|{orbit[0]}')
             else:
                 added[next_el.name] += 1
                 next_vertex = self._create_name(next_el.name,
                                                 added[next_el.name], short_names)
                 graph.add_vertex(next_vertex)
                 checked[next_el.name] = next_vertex
-                graph.add_edge(cur_vertex, next_vertex, power)
+                graph.add_edge(cur_vertex, next_vertex, f'^{power}|{orbit[0]}')
                 next_el._order_graph(graph=graph, checked=checked,
                                      added=added, loops=loops, as_tree=as_tree,
                                      deep=deep+1, max_deep=max_deep,
@@ -883,6 +926,15 @@ class AutomataGroupElement:
                 child = el._calc_tree()
             self._tree.add_child(child)
         return self._tree
+
+    @property
+    def word_with_cycle_orbit(self):
+        if self._path_to_cycle is None:
+            return None
+
+        res_word = self._path_to_cycle[:self._cycle_start_deep] + '(' \
+                   + self._path_to_cycle[self._cycle_start_deep:] + ')'
+        return res_word
 
     # TODO: add unit tests
     def describe(self, graph_class=None, show_structure=True,
@@ -919,6 +971,7 @@ class AutomataGroupElement:
             f'    end power:    {self._cycle_end_power}\n'
             f'    cycle weight: {self._cycle_len}\n'
             f'    full path:    {self._path_to_cycle}\n'
+            f'    word with cycle orbit:  {self.word_with_cycle_orbit}\n'
             f"{'=' * 100}\n"
         )
         if old:
@@ -933,7 +986,7 @@ class AutomataGroupElement:
         if graph_class is not None:
             graph = graph_class(loops=loops, multiedges=True)
             self.order_graph(graph, max_deep=max_deep, loops=loops,
-                             short_names=short_names, as_tree=as_tree)
+                             short_names=short_names, as_tree=as_tree, algo=algo)
             _plt = graph.plot(edge_labels=True, vertex_size=vertex_size, edge_style=':')
             _plt.show(figsize=figsize)
 
