@@ -9,10 +9,10 @@
 
 from __future__ import annotations
 
-from .permutation import Permutation
-from .tools import lcm, reduce_repetitions, id_func, random_el
+from _autogrp_cython.permutation import Permutation
+from _autogrp_cython.tools import lcm, reduce_repetitions, id_func, random_el
 from .trees import Tree
-from .trie import TriedDict
+from _autogrp_cython.trie import TriedDict
 
 import matplotlib.pyplot as plt
 from functools import wraps, partial
@@ -70,19 +70,6 @@ class MaximumOrderDeepError(RecursionError):
 
 
 class AutomataTreeNode(Tree):
-
-    # color of the vertex depends on its permutation
-    # could be changed into 'unique color for each permutation'
-    # now color is unique for each possible order of permutation
-    # _colors = {
-    #     '(2)': 'y',
-    #     '(0 1 2)': 'r',
-    #     '(0 2 1)': 'r',
-    #     '(2)(0 1)': 'b'
-    #     '(0 2)': 'b',
-    #     '(1 2)': 'b'
-    # }
-    #
 
     _colors = {
         1: 'y',
@@ -368,11 +355,13 @@ class _Decorators:
 class _QueueParams:
     el: AutomataGroupElement
     checked: dict
+    last_power: int
     cur_power: int
     deep: int
     check_only: int
     algo: int
     word: str
+    predecessor: str
 
 
 class AutomataGroupElement:
@@ -395,26 +384,22 @@ class AutomataGroupElement:
 
         self.__group = group   # type: AutomataGroup
         self.simplify = is_atom
-        self._tree = None
-        self._is_one = None
-        self._order = None
-        self._is_finite = None
-        self._cycle_start_el = None
-        self._cycle_end_el = None
-        self._cycle_len = None
-        self._cycle_start_deep = None
-        self._cycle_end_deep = None
+        self._tree              = None
+        self._is_one            = None
+        self._order             = None
+        self._is_finite         = None
+        self._cycle_start_el    = None
+        self._cycle_end_el      = None
+        self._cycle_len         = None
+        self._cycle_start_deep  = None
+        self._cycle_end_deep    = None
         self._cycle_start_power = None
-        self._cycle_end_power = None
-        self._path_to_cycle = None
+        self._cycle_end_power   = None
+        self._path_to_cycle     = None
 
     @classmethod
     def set_order_max_deep(cls, value):
-
-        if not (isinstance(value, int) or not
-                str(value.__class__) == "<class 'sage.rings.integer.Integer'>"):
-            raise TypeError(f"Max_deep should be int, not {type(value)}")
-
+        value = int(value)
         if value < 1:
             raise ValueError(f'Max_deep should be greater than 1')
 
@@ -696,7 +681,7 @@ class AutomataGroupElement:
                        verbose=False, algo=AS_SHIFTED_WORDS,
                        print_full_els=False):
 
-        for params in (order_gen := self.order_bfs(check_only, algo)):
+        for params in (order_gen := self._order_bfs(check_only, algo)):
 
             printed = str(params.el) if print_full_els else params.el.name
             if verbose:
@@ -747,11 +732,21 @@ class AutomataGroupElement:
         return True
 
     @_Decorators.check_group
-    def order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS):
+    def order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS, max_deep=10):
+        for params in (gen := self._order_bfs(check_only=check_only, algo=algo)):
+            yield params
+            if params.el.is_one() or params.deep >= max_deep:
+                gen.send(SKIP_CHILDREN)
+            found = self._find_in_checked(params.el.name, params.checked, params.algo)
+            if found:
+                gen.send(SKIP_CHILDREN)
+
+    def _order_bfs(self, check_only=None, algo=AS_SHIFTED_WORDS):
         queue = deque()
         queue.append(_QueueParams(el=self, checked={},
-                                  cur_power=1, deep=0,
-                                  check_only=check_only, algo=algo, word=''))
+                                  cur_power=1, deep=0, predecessor='',
+                                  check_only=check_only, algo=algo, word='',
+                                  last_power=1))
         while queue:
 
             params = queue.popleft()    # type: _QueueParams
@@ -779,8 +774,8 @@ class AutomataGroupElement:
                 queue.append(_QueueParams(
                     el=next_el, checked=params.checked.copy(),
                     cur_power=params.cur_power * power, deep=params.deep + 1,
-                    algo=nex_algo, check_only=next_check_only, word=params.word + str(orbit[0])
-                    )
+                    algo=nex_algo, check_only=next_check_only, word=params.word + str(orbit[0]),
+                    predecessor=params.el.name, last_power=power)
                 )
 
     @staticmethod
