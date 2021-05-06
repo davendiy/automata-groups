@@ -1,0 +1,90 @@
+\documentclass{SHVpaper}
+
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+\begin{document}
+% Так позначається початок рядка із коментарем. Він не компілюється. Далі по тексту описуються особливості використання стилю тез
+% Просимо уникати використання додаткових стильових пакетів
+% Просимо НЕ використовувати власні макроси чи команди
+
+%
+\section{The word and order problems in Hanoi Tower Groups}
+
+\authors{Zashkolnyi D.O.}
+
+%Перед відправкою тез, будь ласка, переконайтесь у відсутності орфографічних та змістовних помилок, та скомпілюйте документ в pdf.
+%На електронну пошту надішліть, будь ласка, tex-файл та pdf-файл.
+%Далі наводимо короткий огляд основних результатів, які планується представити в доповіді
+%Обсяг скомпільованих тез НЕ повинен перевищувати одну сторінку
+
+
+
+The Tower of Hanoi is a well-known mathematical game. The classical variant of this game is played with $n$ discs placed on three pegs. The objective of the game is to move all discs from one peg to another obeying certain simple rules. It is famous result that minimal number of moves required to solve the game is $2^n - 1$.
+
+In \cite{Grigorchuk}, it was shown that the Hanoi Tower game on $k$ pegs can be modeled by a $\frac{k(k-1)}{2}$-generated group, called Hanoi Tower group $H_k$, acting on words over the alphabet $\Sigma_k = {1, 2, ... k}$. The action of generators corresponds to a singe disk move between two pegs. Hence, each strategy of the game corresponds to a word in group generators.
+
+%Properties of Hanoi Tower Group. The Hanoi Tower group is self-similar, branch, amenable,
+
+We study the word problem in the group $H_3$. The word problem is one of three classical decision problems for finitely generate groups. It is formulated as follows: \textit{given a word over alphabet formed with generators, does it represent the identity element of the group?}
+
+Since the Hanoi Tower Groups are examples of so-called Automaton Groups, there is
+common algorithm solving word problem for them. We have proven that its complexity is
+$O(n\log{n})$ in the worst case for $H_3$ and have found explicit elements that cause this case.
+
+We also study the order problem in the groups $H_3$ and $H_4$. This problem is formulated similarly:
+\textit{given a word over alphabet formed with generators, does it represent finite order element?}.
+We have implemented algorithm solving order problem, however there are no evidences
+that it always stops in $H_4$. We also have explored different variations of this algorithm and found
+couterexamples for many of them. Futhermore there was implemeneted fully-worked framework for work with Automaton Groups which you can find on https://github.com/davendiy/automata-groups
+
+%Connection to game.
+
+%Transitivity correspond to strategies.
+
+% Our results. Algorithm.
+%
+% The worst-case complexity.
+%
+% We have implemented algorithm solving
+% word problem for any $w \in H_k$ and have found its complexity in the worst case for $H_3$. We also have implemented algorithm solving order problem in $H_k$, however there are no evidences that
+% it always stops in $H_{k \geq 4}$. Although we have found interesting properties for quite a
+% lot partial cases and have explored Shreirer graphs for $H_3$ and $H_4$. Futhermore there was implemeneted fully-worked framework for work with Automaton Groups which you can find on https://github.com/davendiy/automata-groups
+
+%Fix alphabet $\Sigma_k = \{1, 2, ... k\}$. Define for each pair
+%$(i, j), 1 \leq i < j \leq k$ recursive function $a_{(ij)} : \Sigma_k^* \rightarrow \Sigma_k^*$ as follows:
+%$$
+%a_{(ij)}(iw) = jw, \quad a_{(ij)}(jw) = iw, \quad a_{(ij)}(xw) = xa_{(ij)}(w) \, for \, x \notin \{i, j\}
+%$$
+%It's easy to show that these functions with defined action as superposition form
+%a finitely generated group called \textbf{Hanoi Tower Group on k pegs} $H_k$. These
+%groups are an example of well-known \textit{Automaton Groups} (the most famous one is Grigorchuk group).
+%Elements of $H_k$ can be represented as words on alphabet $X_k = \{a_{(ij)}, 1 \leq i < j \leq k \}$
+%of any length or as recursive form:
+%
+%$$w = \pi (w_1, w_2, ... w_n), \quad w, w_i \in X_k^*, \pi \in Sym(\Sigma_k)$$
+%
+%These groups also can be interpreted as \textit{iterated monodromy groups} like in \cite{monodromy} or
+%as group of \textit{tree-automorphisms} on infinite k-ary rooted tree like in \cite{rooted-trees}.
+
+
+In this paper we focused on 2 common problems for finite-generated groups: and order problem that is
+"\textit{Can we find the order of given word} $w \in X_k^*?$".
+
+%We have implemented algorithm solving
+%word problem for any $w \in H_k$ and have found its complexity in the worst case for $H_3$. We also have
+%implemented algorithm solving order problem in $H_k$, however there are no evidences that
+%it always stops in $H_{k \geq 4}$. Although we have found interesting properties for quite a
+%lot partial cases and have explored Shreirer graphs for $H_3$ and $H_4$. Futhermore there was implemeneted fully-worked framework for work with Automaton Groups which you can find on https://github.com/davendiy/automata-groups
+
+\begin{thebibliography}{5}
+%в дужках вказуэться ім'я, яке використовується для генерації посилань в тексті
+\bibitem{Grigorchuk} R.I. Grigorchuk, Z. Sunik, Asymptotic aspects of Schreier graphs and Hanoi Towers
+groups, C. R. Math. Acad. Sci. Paris, 342 (2006), no. 8, 545–550., https://arxiv.org/abs/math/0601592
+
+\subsection{Authors}
+%для кожного автора потрібно вказати детальну інформацію: ПІБ, наукове звання та місце навчання, електронну адресу
+\author{Davyd Zashkolnyi}{4-th year Bachelor's degree student, Mechanics and Mathematics Faculty, Taras Shevchenko National University of Kyiv, Kyiv, Ukraine}{davendiy@gmail.com}
+
+
+\end{document}

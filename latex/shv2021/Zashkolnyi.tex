@@ -1,0 +1,50 @@
+\documentclass{SHVpaper}
+
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+\begin{document}
+% Так позначається початок рядка із коментарем. Він не компілюється. Далі по тексту описуються особливості використання стилю тез
+% Просимо уникати використання додаткових стильових пакетів
+% Просимо НЕ використовувати власні макроси чи команди
+
+%
+\section{The word and order problems in Hanoi Tower Groups}
+
+\authors{Zashkolnyi D.O.}
+
+%Перед відправкою тез, будь ласка, переконайтесь у відсутності орфографічних та змістовних помилок, та скомпілюйте документ в pdf.
+%На електронну пошту надішліть, будь ласка, tex-файл та pdf-файл.
+%Далі наводимо короткий огляд основних результатів, які планується представити в доповіді
+%Обсяг скомпільованих тез НЕ повинен перевищувати одну сторінку
+
+
+
+The Tower of Hanoi is a well-known mathematical game. The classical variant of this game is played with $n$ discs placed on three pegs. The objective of the game is to move all discs from one peg to another obeying certain simple rules. The minimal number of moves required to solve the game is $2^n-1$.
+
+In \cite{Grigorchuk}, it was shown that the Hanoi Tower game on $k$ pegs can be modeled by a $\frac{k(k-1)}{2}$-generated group, called the Hanoi Tower group $H_k$, acting on words over the alphabet $\Sigma_k =\{1,2,\ldots,k\}$. The action of generators corresponds to a singe disk move between two pegs. Hence, each strategy of the game corresponds to a word in group generators.
+
+%Properties of Hanoi Tower Group. The Hanoi Tower group is self-similar, branch, amenable,
+
+We study the word problem in the group $H_3$. The word problem is one of three classical decision problems for finitely generate groups. It is formulated as follows: \textit{determine, given a word over group generators, whether it represents the identity element of the group.}
+
+Since the Hanoi Tower groups are examples of so-called Automaton Groups, there is
+a common algorithm solving the word problem for them. We have proven that its complexity is
+$O(n\log{n})$ in the worst case for the group $H_3$ and have found explicit elements that cause this case.
+
+We also study the order problem in the groups $H_3$ and $H_4$. This problem is formulated similarly: \textit{determine, given a word over group generators, whether it represents an element of finite order}.
+We proved that the order problem is decidable in the group $H_3$ and designed the corresponding algorithm. We proposed an algorithm for solving the order problem in the group $H_4$; however, it remains an open problem whether it always stops. We also have explored different variations of this algorithm and found counterexamples for many of them. Furthermore, we have implemented a fully-worked framework to work with Automaton Groups which you can find on https://github.com/davendiy/automata-groups
+
+\begin{thebibliography}{5}
+%в дужках вказуэться ім'я, яке використовується для генерації посилань в тексті
+\bibitem{Grigorchuk} R.I. Grigorchuk, Z. Sunik, Asymptotic aspects of Schreier graphs and Hanoi Towers
+groups, C. R. Math. Acad. Sci. Paris, 342 (2006), no. 8, 545–550., https://arxiv.org/abs/math/0601592
+\end{thebibliography}
+
+
+\subsection{Authors}
+%для кожного автора потрібно вказати детальну інформацію: ПІБ, наукове звання та місце навчання, електронну адресу
+\author{Davyd Zashkolnyi}{4-th year Bachelor's degree student, Mechanics and Mathematics Faculty, Taras Shevchenko National University of Kyiv, Kyiv, Ukraine}{davendiy@gmail.com}
+
+
+\end{document}
