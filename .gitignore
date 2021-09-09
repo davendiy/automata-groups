@@ -111,8 +111,12 @@ venv.bak/
 *.bbl
 *.blg
 *.fdb_latexmk
+*.fls
 latex/*.out
-*.toc 
+latex/bachelor_word/*.out
+latex/template_shv
+latex/template_shv_utf
+*.toc
 
 # pycharm
 .idea
