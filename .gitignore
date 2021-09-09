@@ -108,6 +108,11 @@ venv.bak/
 *.aux
 *.fuse_hidden*
 *.synctex.gz
+*.bbl
+*.blg
+*.fdb_latexmk
+latex/*.out
+*.toc 
 
 # pycharm
 .idea
