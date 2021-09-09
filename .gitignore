@@ -115,3 +115,6 @@ venv.bak/
 tmp
 
 literature
+
+# translated cython C files
+_autogrp_cython/*.c
