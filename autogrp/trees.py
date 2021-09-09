@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 class Tree:
     """ Recursive tree structure, capable to be drawn in matplotlib.
 
-    Object of such class represents a tree node with value and any amount
+    Object of this class represents a tree node with value and any amount
     of children.
 
     Parameters

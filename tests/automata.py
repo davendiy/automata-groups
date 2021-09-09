@@ -6,7 +6,7 @@
 
 # by d.zashkonyi
 
-from autogrp.automata import *
+from autogrp.automata import AutomataGroup, AS_WORDS
 from autogrp.tools import DiGraph
 
 
