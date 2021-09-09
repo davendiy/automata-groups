@@ -113,7 +113,7 @@ venv.bak/
 *.fdb_latexmk
 *.fls
 latex/*.out
-latex/bachelor_word/*.out
+latex/bachelor_work/*.out
 latex/template_shv
 latex/template_shv_utf
 *.toc
