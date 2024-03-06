@@ -127,3 +127,6 @@ literature
 
 # translated cython C files
 _autogrp_cython/*.c
+
+# macos store files 
+.DS_Store
