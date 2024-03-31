@@ -228,6 +228,17 @@ class Trie(TriedDict):
         raise TypeError("'Trie' object does not support item deletion")
 
     def max_prefix(self, string):
+        """ Get prefix of the given string with maximum length that
+        contains in the TriedDict.
+
+        Parameters
+        ----------
+        string  : str of any length
+
+        Returns
+        -------
+        (<found_prefix>, <left_string>)
+        """
         res_prefix, left_string, _ = super(Trie, self).max_prefix(string)
         return res_prefix, left_string
 

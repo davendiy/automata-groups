@@ -6,13 +6,26 @@
 
 # by David Zashkolny
 # email: davendiy@gmail.com
+"""
+
+TODO: 
+  - instead of str we should work with list of tokens. 
+  - implement free group reduction 
+  - probably rewrite reduction on C++ OR use Cython features 
+  - maybe implement some part on GPU, using Numba or something 
+  - apply binary powering instead of LempelZiv 
+    UPD: there is no need since LempelZiv works exponentially as well 
+
+"""
+
+
 
 from __future__ import annotations
 
 from _autogrp_cython.permutation import Permutation
 from _autogrp_cython.tools import lcm, reduce_repetitions, id_func, random_el
-from .trees import Tree
 from _autogrp_cython.trie import TriedDict
+from .trees import Tree
 
 import matplotlib.pyplot as plt
 from functools import wraps, partial
@@ -107,6 +120,7 @@ class AutomataTreeNode(Tree):
         self.simplify = simplify
 
         self._size = None
+        self._triv_size = None 
 
         if reverse:
             value = '@'
@@ -126,6 +140,16 @@ class AutomataTreeNode(Tree):
             for el in self.children:      # type: AutomataTreeNode
                 self._size += el.size()
         return self._size
+    
+    def triv_size(self) -> int: 
+        if self.reverse or self.value == 'e': 
+            return 0
+        if self._triv_size is None: 
+            self._triv_size = len(self.name)
+            if self.permutation.order() == 1:
+                for el in self.children: 
+                    self._triv_size += el.size()
+        return self._triv_size
 
     def get_coords(self, start_x, start_y, scale, deep=0, show_full=False,
                    y_scale_mul=3):
@@ -538,7 +562,12 @@ class AutomataGroupElement:
             return self.parent_group(self.name * power)
 
         res = self.parent_group.one
-        tmp = self
+        
+        if power < 0: 
+            tmp = self.parent_group(self.name[::-1])
+            power = -power
+        else: 
+            tmp = self
         i = 1
         while i <= power:
             if i & power:

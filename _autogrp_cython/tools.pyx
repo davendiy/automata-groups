@@ -7,6 +7,9 @@
 # by d.zashkonyi
 
 import random
+from typing import Iterable
+
+from .tokenizer import tokenize
 
 
 def gcd(int x, int y):
@@ -91,14 +94,18 @@ def all_words(space, allow_same_neighbours=False, int max_len=-1):
             break
 
 
-def reduce_repetitions(word, atoms):
+def reduce_repetitions(word: str, atoms: Iterable[str], alphabet=None):
     """ Reduce given word assuming that given atoms have order 2
     (i.e. repetition of such atoms of length 2 like 'aa' means empty word).
 
     Parameters
     ----------
-    word   : str, word of any length
-    atoms  : iterable of elements that could appear in word of order 2
+    word     : str 
+        word of any length
+    atoms    : Iterable[str] 
+        elements that could appear in word of order 2
+    alphabet : Iterable[str]
+        letters the word consists of. If None, assume english lowercase
 
     Returns
     -------
@@ -111,14 +118,8 @@ def reduce_repetitions(word, atoms):
     >>> reduce_repetitions('caaaabbbbc', ['a', 'b'])
     'cc'
     """
-    cdef str tmp = word
-    cdef str el
-    for el in atoms:
-        tmp = tmp.replace(el + el, '')
-    while tmp != word:
-        word = tmp
-        for el in atoms:
-            tmp = tmp.replace(el + el, '')
+    cdef str res
+
     return tmp
 
 
