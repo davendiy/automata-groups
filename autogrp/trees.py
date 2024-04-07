@@ -49,7 +49,7 @@ class Tree:
         """ Create copy of the entire tree recursively.
         """
         res = Tree(self.value)
-        for child in self.children:  # type: Tree
+        for child in self.children:
             res.add_child(child)
         return res
 
@@ -87,7 +87,7 @@ class Tree:
         Returned value isn't cached, therefore dfs will be run anyway.
         """
         res = 0
-        for child in self.children:  # type: Tree
+        for child in self.children:
             res = max(child.height(), res)
         return res + 1
 
@@ -100,7 +100,7 @@ class Tree:
         Returned value isn't cached, therefore dfs will be run anyway.
         """
         res = 1
-        for el in self.children:    # type: Tree
+        for el in self.children:
             res += el.vert_amount()
         return res
 
@@ -204,7 +204,7 @@ class Tree:
         ax.annotate(str(self.value), xy=(x_coord, y_coord),
                     fontsize=fontsize)
 
-        for child in self.children:       # type: Tree
+        for child in self.children:
             child._draw(ax, start_x, start_y, scale, radius, fontsize, deep + 1)
 
     def get_coords(self, start_x, start_y, scale, deep=0):
@@ -228,7 +228,7 @@ class Tree:
         x_coord = start_x + self._offset * scale
         y_coord = start_y - deep * scale
         yield x_coord, y_coord
-        for child in self.children:  # type: Tree
+        for child in self.children:
             for coords in child.get_coords(start_x, start_y, scale, deep + 1):
                 yield coords
             yield x_coord, y_coord
@@ -239,7 +239,7 @@ class Tree:
         """
         pre_shifted = 0
         pre_right_bound = 0
-        for child in self.children:  # type: Tree
+        for child in self.children:
             child.make_offsets()
 
             # left and right bounds of child ('some kind of width')
@@ -270,7 +270,7 @@ class Tree:
         tree (in ones of offset).
         """
         _min_left = _max_right = self._offset
-        for child in self.children:  # type: Tree
+        for child in self.children:
             next_left, next_right = child._max_offsets()
             _min_left = min(_min_left, next_left)
             _max_right = max(_max_right, next_right)
@@ -280,7 +280,7 @@ class Tree:
         """ Shifts the tree on the 'points' steps right.
         """
         self._offset += points
-        for child in self.children:  # type: Tree
+        for child in self.children:
             child._shift(points)
 
     def __getitem__(self, item):
@@ -293,7 +293,7 @@ class Tree:
         self.children[key] = value
 
     def __delitem__(self, key):
-        child = self.children[key]  # type: Tree
+        child = self.children[key]
         del self.children[key]
 
 
@@ -302,7 +302,7 @@ if __name__ == '__main__':
     test_tree.add_child('b')
     test_tree.add_child('c')
     test_tree.add_child('c')
-    for tmp_child in test_tree.children:  # type: Tree
+    for tmp_child in test_tree.children:
         tmp_child.add_child('e')
         tmp_child.add_child('e')
         tmp_child.add_child('e')
