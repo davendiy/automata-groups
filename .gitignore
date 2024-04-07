@@ -136,3 +136,7 @@ graphs/full_order_graphs/
 
 # macos store files 
 .DS_Store
+
+
+# big elements
+interesting_elements/not_stage/
