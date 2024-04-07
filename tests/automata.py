@@ -6,9 +6,8 @@
 
 # by d.zashkonyi
 
-from autogrp.automata import AutomataGroup, AS_WORDS
-from autogrp.tools import DiGraph
-
+from autogrp import DiGraph
+from autogrp.automata import AS_WORDS, AutomataGroup
 
 # H3 = AutomataGroup.generate_H3()
 # H4 = AutomataGroup.generate_H4()

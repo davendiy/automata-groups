@@ -1,4 +1,9 @@
 
+lint: 
+	isort autogrp 
+	isort tests 
+	flake8 autogrp
+
 clean: 
 	mkdir build || true 
 	mkdir build/_autogrp_cython/ || true 

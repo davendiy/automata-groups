@@ -6,13 +6,14 @@
 
 # by d.zashkonyi
 
-from _autogrp_cython.tools import reduce_repetitions, all_words, permute, random_el
-from .tools import do_each, info
 from _autogrp_cython.permutation import Permutation
-from .automata import AutomataGroup, AutomataGroupElement, \
-        AS_GROUP_ELEMENTS, AS_WORDS, AS_SHIFTED_WORDS, ONLY_GENERAL,\
-        DifferentGroupsError, OutOfGroupError, MaximumOrderDeepError
+from _autogrp_cython.tools import (all_words, do_each, info, permute,
+                                   random_el, reduce_repetitions)
 
+from .automata import (AS_GROUP_ELEMENTS, AS_SHIFTED_WORDS, AS_WORDS,
+                       ONLY_GENERAL, AutomataGroup, AutomataGroupElement,
+                       DifferentGroupsError, MaximumOrderDeepError,
+                       OutOfGroupError)
 
 __all__ = ['reduce_repetitions', 'Permutation', 'all_words', 'permute',
            'AutomataGroup', 'AutomataGroupElement', 'AS_GROUP_ELEMENTS',

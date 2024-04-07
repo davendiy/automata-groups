@@ -7,6 +7,7 @@
 # by d.zashkonyi
 
 from functools import reduce
+
 from _autogrp_cython.tools import lcm
 
 

@@ -6,9 +6,10 @@
 
 # by d.zashkonyi
 
-from autogrp import Permutation as my_Permutation
-from sympy.combinatorics import Permutation as sym_Permutation
 import numpy as np
+from sympy.combinatorics import Permutation as sym_Permutation
+
+from autogrp import Permutation as my_Permutation
 
 MAX_LEN = 20
 TESTS_AMOUNT = 100

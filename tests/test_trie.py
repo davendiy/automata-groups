@@ -6,9 +6,10 @@
 
 # by d.zashkonyi
 
-from autogrp.trie import Trie, TriedDict
 import random
 from string import ascii_lowercase, ascii_uppercase
+
+from autogrp.trie import Trie, TriedDict
 
 SPACE = ascii_lowercase + ascii_uppercase
 TESTS_AMOUNT = 100

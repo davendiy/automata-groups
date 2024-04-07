@@ -1,16 +1,16 @@
 
-import re 
+import re
 from typing import Iterable
 from dataclasses import dataclass
 from string import ascii_lowercase
 
-from _autogrp_cython.trie import Trie 
+from _autogrp_cython.trie import Trie
 
 """
-TODO: 
- - use Cython features 
- - implement free group reduction as pipe 
- - implement Hanoi reduction as pipe 
+TODO:
+ - use Cython features
+ - implement free group reduction as pipe
+ - implement Hanoi reduction as pipe
  - rethink the entire architecture, work with Tokens
 """
 
@@ -19,29 +19,29 @@ degree = re.compile(r'\^-?\d*')
 
 
 @dataclass(slots=True, frozen=True)
-class Token: 
-    el: str 
-    degree: int 
+class Token:
+    el: str
+    degree: int
 
-    def get_repr(self, use_powering=True): 
-        if self.degree == 1: 
+    def get_repr(self, use_powering=True):
+        if self.degree == 1:
                 return self.el
-        elif self.degree == 0: 
+        elif self.degree == 0:
             return ''
-        
-        if use_powering:          
+
+        if use_powering:
             return f'{self.el}^{self.degree}'
 
-        res = self.el if self.degree > 0 else f'{self.el}^-1' 
-        return res * abs(self.degree)    
+        res = self.el if self.degree > 0 else f'{self.el}^-1'
+        return res * abs(self.degree)
 
 
 def tokenize(word: str, alphabet: Iterable[str] = None) -> Iterable[Token]:
-    """Tokenize the given word over the alphabet. If alphabet is absent, 
-    assume it is an english one.  
+    """Tokenize the given word over the alphabet. If alphabet is absent,
+    assume it is an english one.
 
-    Each token is a pair `(el, degree)` where `el` represents an element from 
-    the alphabet and `degree` is an integer.  
+    Each token is a pair `(el, degree)` where `el` represents an element from
+    the alphabet and `degree` is an integer.
 
     >>> list(tokenize('aba^-1 b^-1c ba^1231 b^-123', alphabet='abc'))
     [Token(el='a', degree=1), Token(el='b', degree=1), Token(el='a', degree=-1), Token(el='b', degree=-1), Token(el='c', degree=1), Token(el='b', degree=1), Token(el='a', degree=1231), Token(el='b', degree=-123)]
@@ -54,23 +54,23 @@ def tokenize(word: str, alphabet: Iterable[str] = None) -> Iterable[Token]:
         raise ValueError(f"unknown prefix: {word}")
     ValueError: unknown prefix: -
     """
-    if alphabet is None: 
+    if alphabet is None:
         alphabet = ascii_lowercase
     alphabet = Trie(*alphabet)
-    cdef int end 
-    cdef str cur_el 
+    cdef int end
+    cdef str cur_el
     cdef int cur_degree
 
-    while word: 
+    while word:
         word = word.strip()
         cur_el, word = alphabet.max_prefix(word)
-        if not cur_el: 
+        if not cur_el:
             raise ValueError(f"unknown prefix: {word}")
         match = degree.match(word)
-        if match is not None: 
+        if match is not None:
             end = match.span()[1]
             cur_degree = int(word[1:end])
             word = word[end:]
-        else: 
-            cur_degree = 1 
+        else:
+            cur_degree = 1
         yield Token(cur_el, cur_degree)

@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 import random
-from typing import Iterable, Protocol 
+from typing import Iterable, Protocol
 
 import sys
 from contextlib import contextmanager
@@ -114,9 +114,9 @@ def reduce_repetitions(word: str, atoms: Iterable[str], alphabet=None):
 
     Parameters
     ----------
-    word     : str 
+    word     : str
         word of any length
-    atoms    : Iterable[str] 
+    atoms    : Iterable[str]
         elements that could appear in word of order 2
     alphabet : Iterable[str]
         letters the word consists of. If None, assume english lowercase

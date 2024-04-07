@@ -6,10 +6,10 @@
 
 # by d.zashkonyi
 
-from autogrp.automata import *
-from _autogrp_cython.tools import permute, all_words, captured_output
 import numpy as np
 
+from _autogrp_cython.tools import all_words, captured_output, permute
+from autogrp.automata import *
 
 TESTS_AMOUNT = 50
 
@@ -24,7 +24,7 @@ def test_orbits():
 
 def test_autogrp_H3():
     H3 = AutomataGroup.generate_H3()
-    a, b, c = H3.gens   
+    a, b, c = H3.gens
     assert a.name == 'a'
     assert b.name == 'b'
     assert c.name == 'c'
@@ -46,7 +46,7 @@ def test_autogrp_H3():
 
 def test_autorgp_H4():
     H4 = AutomataGroup.generate_H4()
-    a, b, c, d, f, g = H4.gens  
+    a, b, c, d, f, g = H4.gens
     assert a.name == 'a'
     assert b.name == 'b'
     assert c.name == 'c'
@@ -89,29 +89,32 @@ def test_lempel_ziv():
         assert els_pemutations[i] == el.permutation
         assert els_children[i] == el.children
 
+
 def test_autogrp_is_one():
 
     H3 = AutomataGroup.generate_H3()
     H4 = AutomataGroup.generate_H4()
 
-    for el in H3.gens + H4.gens:   
+    for el in H3.gens + H4.gens:
         assert not el.is_one()
         assert (el * el).is_one()
 
-    with open('../interesting_elements/big_non_reducable_trivials.txt') as file:
+    with open('./interesting_elements/big_non_reducable_trivials.txt') as file:
         els = [line.strip() for line in file]
 
         for _ in range(TESTS_AMOUNT):
             el = np.random.choice(els)
             assert H3(el).is_one()
 
+
 def test_autogrp_is_finite():
     H3 = AutomataGroup.generate_H3()
     H4 = AutomataGroup.generate_H4()
 
-    for el in H3.gens + H4.gens:   
+    for el in H3.gens + H4.gens:
         assert el.is_finite()
     assert not H4('gcafbgca').is_finite()
+
 
 def test_autogrp_order():
     H3 = AutomataGroup.generate_H3()
@@ -133,6 +136,7 @@ def test_autogrp_order():
     assert 2 == H4('cbabc').order()
     assert 2 == H4('dcbabcd').order()
 
+
 def test_autogrp_is_finite2():
     H3 = AutomataGroup.generate_H3()
     H4 = AutomataGroup.generate_H4()
@@ -140,7 +144,7 @@ def test_autogrp_is_finite2():
     H4.disable_cache()
     H3.disable_cache()
 
-    for el in H3.gens + H4.gens:   
+    for el in H3.gens + H4.gens:
         assert (el.is_finite(use_dfs=True),
                             el.is_finite())
     assert (H4('gcafbgca').is_finite(use_dfs=True),
@@ -153,9 +157,9 @@ def test_autogrp_is_finite2():
 
     try:
         H4('abcfc').is_finite(check_only=0)
-    except MaximumOrderDeepError: 
-        pass 
-    else: 
+    except MaximumOrderDeepError:
+        pass
+    else:
         assert False
 
 
@@ -170,6 +174,7 @@ def test_autogrp_is_finite3():
         assert (el.is_finite(algo=AS_SHIFTED_WORDS),
                             el.is_finite(algo=AS_GROUP_ELEMENTS))
 
+
 def test_autogrp_reduce_func():
     H4 = AutomataGroup.generate_H4(apply_reduce_func=True)
     orders = []
@@ -180,6 +185,7 @@ def test_autogrp_reduce_func():
     for el, order in zip(all_words(H4.alphabet, max_len=4), orders):
         assert order == H4(el).order()
 
+
 def test_call():
     H4 = AutomataGroup.generate_H4()
     assert '11111' == H4.one('11111')
@@ -189,6 +195,7 @@ def test_call():
 
     H3 = AutomataGroup.generate_H3()
     assert '0000' == H3('abcabcabcabcabca')('2222')
+
 
 def test_autogrp_output():
     H4 = AutomataGroup.generate_H4(force=True)
@@ -224,7 +231,3 @@ Generation: 2, element: abdbf
 Generation: 2, element: dfbab
 Found cycle between dfbab and abdfb of length 4.0"""
     assert expected3 == out.getvalue().strip()
-
-
-if __name__ == '__main__':
-    unittest.main()
