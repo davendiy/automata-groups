@@ -27,6 +27,7 @@ from _autogrp_cython.tools import lcm, reduce_repetitions, id_func, random_el
 from _autogrp_cython.trie import TriedDict
 from .trees import Tree
 
+from typing import Iterable
 import matplotlib.pyplot as plt
 from functools import wraps, partial
 import warnings
@@ -137,7 +138,7 @@ class AutomataTreeNode(Tree):
             return 0
         if self._size is None:
             self._size = len(self.name)
-            for el in self.children:      # type: AutomataTreeNode
+            for el in self.children:      
                 self._size += el.size()
         return self._size
     
@@ -174,7 +175,7 @@ class AutomataTreeNode(Tree):
         yield x_coord, y_coord
 
         if not self.simplify or show_full:
-            for child in self.children:  # type: AutomataTreeNode
+            for child in self.children:  
                 for coords in child.get_coords(start_x, start_y, scale,
                                                deep+1, show_full=show_full,
                                                y_scale_mul=y_scale_mul):
@@ -306,7 +307,7 @@ class AutomataTreeNode(Tree):
 
         # continue plotting of children if given parameters allow
         if not self.simplify or show_full:
-            for child in self.children:       # type: AutomataTreeNode
+            for child in self.children:       
                 child._draw(ax, start_x, start_y, scale, radius, fontsize,
                             deep + 1, show_full, y_scale_mul, used_colors, lbn,
                             show_names=show_names)
@@ -339,7 +340,7 @@ class AutomataTreeNode(Tree):
                                self.reverse, self.simplify)
         res._size = self._size
 
-        for child in self.children:   # type: AutomataTreeNode
+        for child in self.children:  
             res.add_child(child)
         return res
 
@@ -462,14 +463,14 @@ class AutomataGroupElement:
         self._is_finite = None
 
     @_Decorators.check_group
-    def __iter__(self) -> AutomataGroupElement:
+    def __iter__(self) -> Iterable[AutomataGroupElement]:
         for el in self.children:
             yield self.parent_group(el)
 
     @_Decorators.check_group
     def dfs(self):
         yield self
-        for child in self:    # type: AutomataGroupElement
+        for child in self:    
             if child.name == self.name:
                 continue
             if child.simplify:
@@ -617,7 +618,7 @@ class AutomataGroupElement:
             power = int(self.permutation.order())
             next_el = self ** power
             res = 1
-            for el in next_el:    # type: AutomataGroupElement
+            for el in next_el:    
                 res = lcm(res, el.order(check_finite=False))
             res *= power
         return res
@@ -917,7 +918,7 @@ class AutomataGroupElement:
                                       reverse=False,
                                       simplify=self.simplify)
 
-        for el in self:    # type: AutomataGroupElement
+        for el in self:    
             if el.name == self.name:
                 child = AutomataTreeNode(reverse=True)
             else:
