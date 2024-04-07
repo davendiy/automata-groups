@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 from autogrp.automata import *
-from autogrp.tools import permute, all_words, captured_output
+from _autogrp_cython.tools import permute, all_words, captured_output
 import numpy as np
 
 
