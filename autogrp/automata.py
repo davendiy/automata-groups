@@ -19,7 +19,6 @@ TODO:
 """
 
 
-
 from __future__ import annotations
 
 from _autogrp_cython.permutation import Permutation

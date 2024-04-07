@@ -7,9 +7,23 @@
 # by d.zashkonyi
 
 import random
-from typing import Iterable
+from typing import Iterable, Protocol 
 
-from .tokenizer import tokenize
+import sys
+from contextlib import contextmanager
+from io import StringIO
+import time
+
+
+@contextmanager
+def captured_output():
+    new_out, new_err = StringIO(), StringIO()
+    old_out, old_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = new_out, new_err
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err
 
 
 def gcd(int x, int y):
@@ -118,9 +132,15 @@ def reduce_repetitions(word: str, atoms: Iterable[str], alphabet=None):
     >>> reduce_repetitions('caaaabbbbc', ['a', 'b'])
     'cc'
     """
-    cdef str res
-
+    tmp = word
+    for el in atoms:
+        tmp = tmp.replace(el + el, '')
+    while tmp != word:
+        word = tmp
+        for el in atoms:
+            tmp = tmp.replace(el + el, '')
     return tmp
+
 
 
 def random_el(space, int repeat, allow_same_neighbours=False):
@@ -146,3 +166,50 @@ def random_el(space, int repeat, allow_same_neighbours=False):
 
 def id_func(x):
     return x
+
+
+def do_each(n):
+    def _do_each_n(func):
+        j = 0
+
+        def _func(*args, **kwargs):
+            nonlocal j
+            j += 1
+            if j == n:
+                j = 0
+                return func(*args, **kwargs)
+        return _func
+    return _do_each_n
+
+
+def info(cur_amount, full_amount, start_time=None):
+
+    print('\r', end='')
+    print('done: {:.4f}%'.format(float(cur_amount / full_amount) * 100), end='')
+
+    if start_time is not None:
+        cur_time = time.time()
+        elapsed = cur_time - start_time
+        on_clock = elapsed / cur_amount
+        hyp_full_time = on_clock * full_amount
+        remaind = hyp_full_time - elapsed
+
+        if elapsed > 3600: elapsed_str = '{:.2f}h'.format(elapsed / 3600)
+        elif elapsed > 60: elapsed_str = '{:.2f}m'.format(elapsed / 60)
+        else:              elapsed_str = '{:.2f}s'.format(elapsed)
+
+        if remaind > 3600: remaind_str = '{:.2f}h'.format(remaind / 3600)
+        elif remaind > 60: remaind_str = '{:.2f}m'.format(remaind / 60)
+        else:              remaind_str = '{:.2f}s'.format(remaind)
+
+        print(f'   time passed: {elapsed_str},', end='')
+        print(f'   approximately left: {remaind_str}      ', end='')
+
+
+class DiGraph(Protocol):
+
+    def add_vertex(self, vert):
+        pass
+
+    def add_edge(self, source, dest, value):
+        pass

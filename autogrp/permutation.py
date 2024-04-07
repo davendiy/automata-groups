@@ -7,7 +7,7 @@
 # by d.zashkonyi
 
 from functools import reduce
-from .tools import lcm
+from _autogrp_cython.tools import lcm
 
 
 class Permutation(tuple):

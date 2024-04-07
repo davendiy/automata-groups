@@ -4,7 +4,7 @@ from typing import Iterable
 from dataclasses import dataclass
 from string import ascii_lowercase
 
-from .trie import Trie 
+from _autogrp_cython.trie import Trie 
 
 """
 TODO: 
@@ -22,6 +22,18 @@ degree = re.compile(r'\^-?\d*')
 class Token: 
     el: str 
     degree: int 
+
+    def get_repr(self, use_powering=True): 
+        if self.degree == 1: 
+                return self.el
+        elif self.degree == 0: 
+            return ''
+        
+        if use_powering:          
+            return f'{self.el}^{self.degree}'
+
+        res = self.el if self.degree > 0 else f'{self.el}^-1' 
+        return res * abs(self.degree)    
 
 
 def tokenize(word: str, alphabet: Iterable[str] = None) -> Iterable[Token]:
