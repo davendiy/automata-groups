@@ -128,5 +128,7 @@ literature
 # translated cython C files
 _autogrp_cython/*.c
 
+graphs/full_order_graphs/
+
 # macos store files 
 .DS_Store
