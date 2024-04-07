@@ -127,6 +127,7 @@ literature
 
 # translated cython C files
 _autogrp_cython/*.c
+_autogrp_cython/build/
 
 graphs/full_order_graphs/
 
