@@ -7,6 +7,7 @@
 # by d.zashkonyi
 
 from collections import deque
+from _autogrp_cython.tokenizer import as_tokens
 
 
 # TODO: implement full dict interface
@@ -261,3 +262,8 @@ class Trie(TriedDict):
     keys = _deleted_attr()
     values = _deleted_attr()
     items = _deleted_attr()
+
+ 
+# TODO: implement
+class TokenizedTrie(Trie):
+    pass

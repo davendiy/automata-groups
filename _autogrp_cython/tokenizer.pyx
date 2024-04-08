@@ -14,6 +14,7 @@ TODO:
  - rethink the entire architecture, work with Tokens
 """
 
+from itertools import chain
 
 degree = re.compile(r'\^-?\d*')
 
@@ -22,6 +23,13 @@ degree = re.compile(r'\^-?\d*')
 class Token:
     el: str
     degree: int
+
+    def split(self):
+        if abs(self.degree) > 1:
+            sign = 1 if self.degree > 0 else -1
+            return [Token(self.el, sign) for _ in range(abs(self.degree))]
+        else:
+            return [self]
 
     def get_repr(self, use_powering=True):
         if self.degree == 1:
@@ -36,7 +44,7 @@ class Token:
         return res * abs(self.degree)
 
 
-def tokenize(word: str, alphabet: Iterable[str] = None) -> Iterable[Token]:
+def tokenize(word, alphabet: Iterable[str] = None) -> Iterable[Token]:
     """Tokenize the given word over the alphabet. If alphabet is absent,
     assume it is an english one.
 
@@ -74,3 +82,12 @@ def tokenize(word: str, alphabet: Iterable[str] = None) -> Iterable[Token]:
         else:
             cur_degree = 1
         yield Token(cur_el, cur_degree)
+
+
+def as_tokens(word, alphabet: Iterable[str] = None, split=False) -> Iterable[str]:
+    if split:
+        seq = [tok.split() for tok in tokenize(word, alphabet)]
+    else:
+        seq = [tokenize(word, alphabet)]
+
+    return [el.get_repr() for el in chain(*seq)]

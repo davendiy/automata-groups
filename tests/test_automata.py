@@ -22,6 +22,11 @@ def test_orbits():
     assert expected == AutomataGroupElement._get_orbits(x)
 
 
+def test_autogrp_adding():
+    G = AutomataGroup.generate_adding_machine(apply_reduce_func=True)
+    assert G('aa^-1') == G.one
+
+
 def test_autogrp_H3():
     H3 = AutomataGroup.generate_H3()
     a, b, c = H3.gens
