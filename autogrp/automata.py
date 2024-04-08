@@ -11,10 +11,10 @@ TODO:
   - [x] instead of str we should work with list of tokens.
   - [x] implement free group reduction
   - [x] probably rewrite reduction on C++ OR use Cython features
-  - observation: using free reduction as default makes code slow.
-  - maybe implement some part on GPU, using Numba or something
-  - apply binary powering instead of LempelZiv
-    UPD: there is no need since LempelZiv works exponentially as well
+  - [ ] observation: using free reduction as default makes code slow.
+  - [ ] maybe implement some part on GPU, using Numba or something
+  - [ ] apply binary powering instead of LempelZiv
+        UPD: there is no need since LempelZiv works exponentially as well
 """
 
 
