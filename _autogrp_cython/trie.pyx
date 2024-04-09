@@ -7,7 +7,12 @@
 # by d.zashkonyi
 
 from collections import deque
-from _autogrp_cython.tokenizer import as_tokens
+
+
+class _end(object):
+
+    def __repr__(self):
+        return '_end()'
 
 
 # TODO: implement full dict interface
@@ -24,7 +29,7 @@ class TriedDict:
     >>> tr_dict = TriedDict(test=2, test2=3)
     >>> tr_dict['hello there'] = 4
     >>> print(tr_dict)
-    TriedDict({'t': {'e': {'s': {'t': {'': 2, '2': {'': 3}}}}}, 'h': {'e': {'l': {'l': {'o': {' ': {'t': {'h': {'e': {'r': {'e': {'': 4}}}}}}}}}}}})
+    TriedDict({'t': {'e': {'s': {'t': {_end(): 2, '2': {_end(): 3}}}}}, 'h': {'e': {'l': {'l': {'o': {' ': {'t': {'h': {'e': {'r': {'e': {_end(): 4}}}}}}}}}}}})
     >>> 'hello there' in tr_dict
     True
     >>> 'test3' in tr_dict
@@ -41,7 +46,7 @@ class TriedDict:
     >>> list(tr_dict.values())
     [2, 3]
     """
-    _end = ''
+    _end = object()
 
     def __init__(self, **words):
         cdef dict root = dict()
@@ -127,6 +132,7 @@ class TriedDict:
 
         return string[:last_i], string[last_i:], last_value
 
+    # TODO: repr should return runnable python code. Either change it here, or in constructor
     def __repr__(self):
         return f'TriedDict({self._root})'
 
@@ -188,7 +194,7 @@ class Trie(TriedDict):
     --------
     >>> trie = Trie("word", "word2", "word3", "w", "wo", "next")
     >>> print(trie)
-    Trie({'w': {'o': {'r': {'d': {'': '', '2': {'': ''}, '3': {'': ''}}}, '': ''}, '': ''}, 'n': {'e': {'x': {'t': {'': ''}}}}})
+    Trie({'w': {'o': {'r': {'d': {_end(): _end(), '2': {_end(): _end()}, '3': {_end(): _end()}}}, _end(): _end()}, _end(): _end()}, 'n': {'e': {'x': {'t': {_end(): _end()}}}}})
     >>> 'word' in trie
     True
     >>> 'word123' in trie
@@ -263,7 +269,7 @@ class Trie(TriedDict):
     values = _deleted_attr()
     items = _deleted_attr()
 
- 
-# TODO: implement
+
+# TODO: implement trie that works with tokens only (whY?)
 class TokenizedTrie(Trie):
     pass

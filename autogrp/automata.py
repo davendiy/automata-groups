@@ -15,6 +15,13 @@ TODO:
   - maybe implement some part on GPU, using Numba or something
   - apply binary powering instead of LempelZiv
     UPD: there is no need since LempelZiv works exponentially as well
+  - store everywhere list of tokens as internal state of the AutomataGroupElement
+  - this also should affect TokenizedTriedDict, since this class is just temporary solution
+  - rewrite inversing of AutomataGroupElements, assuming there provided inverses
+  - think of algorithm to automatically finding inverses
+  - add nucleus finding
+  - add checking whether group is contracting
+  - 
 """
 
 
@@ -36,6 +43,7 @@ from _autogrp_cython.tokenizer import as_tokens
 from _autogrp_cython.tools import id_func, lcm, random_el
 from _autogrp_cython.tools import reduce_repetitions as old_reduce
 from _autogrp_cython.trie import TriedDict
+from _autogrp_cython.tokenized_trie import TokenizedTriedDict
 
 from .trees import Tree
 
@@ -580,6 +588,7 @@ class AutomataGroupElement:
             tmp *= tmp
         return res
 
+    # TODO: implement via nice inversing
     @_Decorators.check_group
     def inverse(self):
         return self ** (-1)
@@ -1018,7 +1027,7 @@ class AutomataGroup:
         if name not in cls.__instances:
             obj = super(AutomataGroup, cls).__new__(cls)
             obj.name = name
-            obj._defined_els = TriedDict()
+            obj._defined_els = TokenizedTriedDict(alphabet=[el.name for el in gens if '^-1' not in el.name] + ['e'])
             obj._defined_trees = {}
             obj._lempel_ziv = lempel_ziv
             obj._use_cache = True
@@ -1081,6 +1090,7 @@ class AutomataGroup:
     def alphabet(self):
         return [el.name for el in self.__gens if '^-1' not in el.name]
 
+    # FIXME: I remember this worked badly
     def clear_memory(self):
         self._defined_els.clear()
         self._defined_els['e'] = self._e

@@ -8,11 +8,12 @@ which can be found [here](./latex/bachelor_work/Bachelor.pdf).
 [Demo](./demo) (it will be extended soon).
 
 
-Have no idea why it doesn't work from makefile or venv, so one should install it manually. 
+Have no idea why it doesn't work from makefile or venv, so one should install it manually.
 
-Installation: 
+Installation:
 ```
-pip install Cython 
+pip install Cython
+pip install -r requirements.txt
 pip install .
-make clean 
+make clean
 ```

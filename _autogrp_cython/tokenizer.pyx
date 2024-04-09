@@ -71,7 +71,7 @@ def tokenize(word, alphabet: Iterable[str] = None) -> Iterable[Token]:
 
     while word:
         word = word.strip()
-        cur_el, word = alphabet.max_prefix(word)
+        cur_el, word = alphabet.max_prefix(word)   # FIXME: probably redundant
         if not cur_el:
             raise ValueError(f"unknown prefix: {word}")
         match = degree.match(word)

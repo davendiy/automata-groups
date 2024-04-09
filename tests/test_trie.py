@@ -9,12 +9,11 @@
 import random
 from string import ascii_lowercase, ascii_uppercase
 
-from autogrp.trie import Trie, TriedDict
+from _autogrp_cython.trie import Trie, TriedDict
 
 SPACE = ascii_lowercase + ascii_uppercase
 TESTS_AMOUNT = 100
 MAX_LEN = 1000
-
 
 
 def test_trie_add():
@@ -28,6 +27,7 @@ def test_trie_add():
     for word in all_words:
         assert word in test
 
+
 def test_trie_iter():
     all_words = set()
     test = Trie()
@@ -39,6 +39,7 @@ def test_trie_iter():
 
     all_trie_words = {word for word in test}
     assert all_words == all_trie_words
+
 
 def test_trie_max_prefix():
     all_words = set()
@@ -61,6 +62,7 @@ def test_trie_max_prefix():
                 required_noise = string[len(word):]
                 break
         assert (required_word, required_noise) == test.max_prefix(string)
+
 
 def test_trie_max_prefix2():
     all_words = set()
@@ -91,6 +93,7 @@ def test_trie_remove():
 
     res_words = set(test)
     assert all_words == res_words
+
 
 def test_trie_len():
     all_words = set()
@@ -124,6 +127,7 @@ def test_trieddict_set():
     for word in all_words:
         assert word in test
 
+
 def test_trieddict_get():
     all_words = {}
     test = TriedDict()
@@ -136,6 +140,7 @@ def test_trieddict_get():
 
     for word in all_words:
         assert all_words[word] == test[word]
+
 
 def test_trieddict_del():
     all_words = {}
