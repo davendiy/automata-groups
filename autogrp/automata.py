@@ -11,17 +11,17 @@ TODO:
   - [x] instead of str we should work with list of tokens.
   - [x] implement free group reduction
   - [x] probably rewrite reduction on C++ OR use Cython features
-  - observation: using free reduction as default makes code slow.
-  - maybe implement some part on GPU, using Numba or something
-  - apply binary powering instead of LempelZiv
-    UPD: there is no need since LempelZiv works exponentially as well
+  - [ ] observation: using free reduction as default makes code slow.
+  - [ ] maybe implement some part on GPU, using Numba or something
+  - [ ] apply binary powering instead of LempelZiv
+        UPD: there is no need since LempelZiv works exponentially as well
   - store everywhere list of tokens as internal state of the AutomataGroupElement
   - this also should affect TokenizedTriedDict, since this class is just temporary solution
   - rewrite inversing of AutomataGroupElements, assuming there provided inverses
   - think of algorithm to automatically finding inverses
   - add nucleus finding
   - add checking whether group is contracting
-  - 
+  -
 """
 
 
