@@ -17,3 +17,8 @@ pip install -r requirements.txt
 pip install .
 make clean
 ```
+
+For sage usage:
+```
+sage --pip install .
+```

@@ -11,19 +11,19 @@ TODO:
   - [x] instead of str we should work with list of tokens.
   - [x] implement free group reduction
   - [x] probably rewrite reduction on C++ OR use Cython features
+  - [ ] move all code to Cython
   - [ ] observation: using free reduction as default makes code slow.
   - [ ] maybe implement some part on GPU, using Numba or something
   - [ ] apply binary powering instead of LempelZiv
         UPD: there is no need since LempelZiv works exponentially as well
-  - store everywhere list of tokens as internal state of the AutomataGroupElement
-  - this also should affect TokenizedTriedDict, since this class is just temporary solution
-  - rewrite inversing of AutomataGroupElements, assuming there provided inverses
-  - think of algorithm to automatically finding inverses
-  - add nucleus finding
-  - add checking whether group is contracting
+  - [ ] store everywhere list of tokens as internal state of the AutomataGroupElement
+  - [ ] this also should affect TokenizedTriedDict, since this class is just temporary solution
+  - [ ] rewrite inversing of AutomataGroupElements, assuming there provided inverses
+  - [ ] think of algorithm to automatically finding inverses
+  - [ ] add nucleus finding
+  - [ ] add checking whether group is contracting
   -
 """
-
 
 from __future__ import annotations
 
@@ -94,6 +94,7 @@ class MaximumOrderDeepError(RecursionError):
         return f'Reached maximum deep while finding order for {self.name}'
 
 
+# todo: think of group elements as dataclasses
 class AutomataTreeNode(Tree):
 
     _colors = {
@@ -445,7 +446,7 @@ class AutomataGroupElement:
         if self.name == 'e':
             return 0
         else:
-            return len(self.name)
+            return len(self.name)   # todo: should be tokens
 
     @property
     def tree(self) -> AutomataTreeNode:
@@ -482,7 +483,7 @@ class AutomataGroupElement:
     def dfs(self):
         yield self
         for child in self:
-            if child.name == self.name:
+            if child.name == self.name:  # todo: add check of cycle
                 continue
             if child.simplify:
                 yield child
@@ -508,7 +509,7 @@ class AutomataGroupElement:
         elif isinstance(item, tuple):
             res = self
             for el in item:
-                res = self.parent_group(res[el])
+                res = self.parent_group(res[el])   # fixme: probably parent group is redundant
             return res
         else:
             raise TypeError(f"Tree indices must be int or tuple, not {type(item)}")
@@ -550,8 +551,12 @@ class AutomataGroupElement:
             x = self(x)
             i += 1
 
+    # todo: rethink repr and str
     def __repr__(self):
-        return f'{self.parent_group.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
+        if self.parent_group is None:
+            return f'{self.name} = {self.permutation} ({", ".join(self.children)})'
+        else:
+            return f'{self.parent_group.name}({self.name} = {self.permutation} ({", ".join(self.children)}))'
 
     @_Decorators.check_group
     def __mul__(self, other):
@@ -567,7 +572,7 @@ class AutomataGroupElement:
                 str(power.__class__) == "<class 'sage.rings.integer.Integer'>"):
             raise TypeError(f"Power type should be int, not {type(power)}")
 
-        if power == -1:
+        if power == -1:    # fixme: wont work for other than hanoi
             return self.parent_group(self.name[::-1])
 
         if self.parent_group.is_defined(self.name * power):
@@ -575,7 +580,7 @@ class AutomataGroupElement:
 
         res = self.parent_group.one
 
-        if power < 0:
+        if power < 0:    # fixme: wont work for other than hanoi
             tmp = self.parent_group(self.name[::-1])
             power = -power
         else:
@@ -596,7 +601,6 @@ class AutomataGroupElement:
     @_Decorators.check_group
     @_Decorators.cached('_is_one')
     def is_one(self):
-
         if self.name == 'e':
             res = True
         elif self.permutation.order() != 1:

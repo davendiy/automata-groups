@@ -8,10 +8,10 @@ from _autogrp_cython.trie import Trie
 
 """
 TODO:
- - use Cython features
- - implement free group reduction as pipe
- - implement Hanoi reduction as pipe
- - rethink the entire architecture, work with Tokens
+ - [ ] use Cython features
+ - [x] implement free group reduction as pipe
+ - [x] implement Hanoi reduction as pipe
+ - [ ] rethink the entire architecture, work with Tokens
 """
 
 from itertools import chain
